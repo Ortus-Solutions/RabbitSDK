@@ -1,0 +1,1 @@
+<cflocation url="/test-harness/tests/runner.cfm" addtoken="false">

@@ -1,0 +1,38 @@
+{
+    "name":"RabbitSDK",
+    "author":"Brad Wood <brad@ortussolutions.com>",
+    "version":"1.0.0",
+    "location":"https://downloads.ortussolutions.com/ortussolutions/rabbitsdk/@build.version@/rabbitsdk-@build.version@.zip",
+    "slug":"rabbitsdk",
+    "type":"modules",
+    "homepage":"https://github.com/Ortus-Solutions/RabbitSDK",
+    "documentation":"https://github.com/Ortus-Solutions/RabbitSDK",
+    "repository":{
+        "type":"git",
+        "url":"https://github.com/Ortus-Solutions/RabbitSDK"
+    },
+    "bugs":"https://ortussolutions.atlassian.net/browse/BOX",
+    "shortDescription":"A CFML/ColdFusion SDK for RabbitMQ",
+    "license":[
+        {
+            "type":"Apache2",
+            "url":"http://www.apache.org/licenses/LICENSE-2.0.html"
+        }
+    ],
+    "contributors":[],
+    "dependencies":{
+        "amqp-client-5.9.0":"jar:https://repo1.maven.org/maven2/com/rabbitmq/amqp-client/5.9.0/amqp-client-5.9.0.jar"
+    },
+    "devDependencies":{},
+    "installPaths":{
+        "amqp-client-5.9.0":"lib/amqp-client-5.9.0/"
+    },
+    "ignore":[
+        "**/.*",
+        "test-harness",
+        "*/.md"
+    ],
+    "scripts":{
+        "toMaster":"recipe build/toMaster.boxr"
+    }
+}
