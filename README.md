@@ -35,7 +35,7 @@ https://luceeserver.atlassian.net/browse/LDEV-2296
 As such, it is required for you to be responsible for loading the Rabbit jar into your application.
 If this is a CFML web app, you can add this to your `Application.cfc`
 
-```cfml
+```js
 	this.javaSettings = {
 		loadPaths = directorylist( expandPath( '/modules/rabbitsdk/lib' ), true, 'array', '*jar' ),
 		loadColdFusionClassPath = true,
@@ -44,7 +44,7 @@ If this is a CFML web app, you can add this to your `Application.cfc`
 ```
 
 Or if you are using this module from the CLI, you can load the jars in a task runner or custom command in CommandBox prior to using the module like so:
-```
+```js
 classLoad( 'expandPath( '/rabbitsdk/lib' )' );
 ```
 
@@ -68,19 +68,19 @@ Here are the major CFCs you need to know about:
 Create this only once and re-use over the life of your app.  The CFC is marked as a singleton, so if you are using WireBox to access it, you don't need to manually cache it anywhere.
 Simply inject it wherever you need and use it.  It is very imporatnt to call the `shutdown()` method to release the connection when your app is shutting down or reiniting.
 
-```cfml
+```js
 wirebox.getInstance( 'RabbitClient@rabbitsdk' );
 ```
 or 
 
-```cfml
+```js
 property name='rabbitClient' inject='RabbitClient@rabbitsdk';
 ```
 
 Each `RabbitClient` instance contains a single connection which is auto-created on first use if you have supplied the connection details in the module settings.
 You can also manually create your connect, which only needs to happen once:
 
-```cfml
+```js
 rabbitClient.connect( host='localhost', port=5672, username='guest', password='guest' );
 ```   
 
@@ -89,7 +89,7 @@ when it's finished, it will leave hanging connections which you can see in the w
 
 If you want to have more than one connection, then create additional WireBox mappings for this CFC and create them individually.  
 
-```cfml
+```js
 // In your /config/Wirebox.cfc
 map( 'PublishClient' ).to( 'rabbitsdk.models.RabbitClient' );
 map( 'ConsumerClient' ).to( 'rabbitsdk.models.RabbitClient' );
@@ -116,14 +116,14 @@ wirebox.getInstance( 'PublishClient' )
 Create a new channel for every new page request and do not share the same channel between threads.  The channel's are technically thread safe, but only one thread can use the channel at a time
 so it would create an unwanted bottleneck.  Pretty much all interactions with Rabbit happen on a channel object.
 
-```cfml
+```js
 var channel = rabbitClient.createChannel();
 ```
 
 Make sure to call `close()` on a channel when you're done.  This is important or the channel will be left open forever and there is a limited number of channels that can be open for a connection.
 In case you're code errors, it is recommended to use a `finally` block to ensure the close always happens.
 
-```cfml
+```js
 try {
 	var channel = rabbitClient.createChannel();
 	channel.queueDeclare( 'myQueue' );
@@ -138,7 +138,7 @@ ask the client for a fresh channel if the previous one encounters an error.
 
 All methods that don't return some explicit value return `this` so you can do method chaining like so:
 
-```cfml
+```js
 rabbitClient.createChannel()
 	.queueDeclare( 'myQueue' );
 	.queuePurge( 'myQueue' );	
@@ -149,7 +149,7 @@ rabbitClient.createChannel()
 
 You can consume a single message at a time like so.  See the `Message` section below.
 
-```cfml
+```js
 var message = channel.getMessage( 'myQueue' );
 ```
 
@@ -158,7 +158,7 @@ var message = channel.getMessage( 'myQueue' );
 The recommended way to process messages is to start a consumer.  Each channel can have a single consumer started.  A consumer only needs to be started once.  The consumer will run until it is stopped, the channel is closed, or the client is shutdown.
 A consumer runs in a separate thread so starting the consumer is a non-blocking operation.  You pass a UDF/closure to the consumer which will be called once for every message that comes in.
 
-```cfml
+```js
 rabbitClient
 	.createChannel()
 	.startConsumer( 
@@ -177,7 +177,7 @@ The callback UDF receives two arguments:
 
 You can start more than one consumer.  Simply create a new channel for each consumer, and don't close the channel until you stop the consumer.
 
-```cfml
+```js
 var channel1 = rabbitClient.createChannel().startConsumer( 'myQueue', ()=>{} );
 var channel2 = rabbitClient.createChannel().startConsumer( 'myQueue', ()=>{} );
 var channel3 = rabbitClient.createChannel().startConsumer( 'myQueue', ()=>{} );
@@ -186,7 +186,7 @@ When you have more than one consumer, they will compete for messages and work th
 tasks that take a while to process and you want to evenly distribute load among the consumers.  If you have a very large number of messages and processing time is very fast, you can improve performance by increasing your
 prefetch amount so a consumer grabs more than one message to work at a time reduces network traffic between messages.
 
-```cfml
+```js
 rabbitClient.createChannel().startConsumer( name='myQueue', udf=()=>{}, prefetch=10 );
 ```
 
@@ -221,7 +221,7 @@ Transient that represents a message received from the server for you to process.
 By default, messages will be automatically acknowledged, which removes them from the queue.  For transient, or unimportant messages, this is fine.  However, if you want to protect against an important
 message getting lost, set `autoAcknowledge` to false when getting your message or starting the consumer and explicitly acknowledge it like so:
 
-```cfml
+```js
 message.acknowledge();
 ```
 
@@ -233,7 +233,7 @@ When you start a consumer thread, you can simply return `true` from your callbac
 
 If you are unable to process a message (such as a DB connection issue or other unrecoverable error) you can reject the message which will tell the Rabbit server that it was not processed.  
 
-```cfml
+```js
 message.reject();
 ```
 
@@ -243,7 +243,7 @@ When you start a consumer thread, you can simply return `false` from your callba
 
 The default behavior when rejecting a message is NOT to requeue the message, meaning it is lost.  If you want the message to be placed back in the queue for redelivery, then call reject like so:
 
-```cfml
+```js
 message.reject( requeue=true );
 ```
 
@@ -258,7 +258,7 @@ You can create, remove, and purge queues from the channel API.
 
 Creating a queue is idempotent, meaning you can call this as many times as you like, and if the queue already exists, nothing happens.
 
-```cfml
+```js
 rabbitClient
 	.createChannel()
 	.queueDeclare( 'myQueue' )
@@ -275,7 +275,7 @@ Creating a queue has the following additional arguments
 
 A queue binding controls what exchange and routing keys will deliver to the queue.
 
-```cfml
+```js
 rabbitClient
 	.createChannel()
 	.queueDeclare( 'myQueue' )
@@ -285,7 +285,7 @@ rabbitClient
 
 ## Delete queue
 
-```cfml
+```js
 rabbitClient
 	.createChannel()
 	.queueDelete( 'myQueue' )
@@ -302,7 +302,7 @@ Deleting a queue has the following additional arguments
 
 Purging a queue removes all messages.  This is probably only something you'd need for testing.
 
-```cfml
+```js
 rabbitClient
 	.createChannel()
 	.queuePurge( 'myQueue' )
@@ -314,7 +314,7 @@ rabbitClient
 Returns true if queue exists, false if it doesn't.  Be careful calling this method under load as it catches a thrown exception if the queue doesn't exist 
 so it probably doesn't perform great if the queue you are checking doesn't exist most of the time.
 
-```cfml
+```js
 var exists = rabbitClient
 	.createChannel()
 	.queueExists( 'myQueue' )
@@ -325,7 +325,7 @@ var exists = rabbitClient
 
 Returns count of the messages of the given queue.  Doesn't count messages which waiting acknowledges or published to queue during transaction but not committed yet.  
 
-```cfml
+```js
 var count = rabbitClient
 	.createChannel()
 	.getQueueMessageCount( 'myQueue' )
