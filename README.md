@@ -126,12 +126,22 @@ In case you're code errors, it is recommended to use a `finally` block to ensure
 ```js
 try {
 	var channel = rabbitClient.createChannel();
-	channel.queueDeclare( 'myQueue' );
-	channel.queuePurge( 'myQueue' );	
+	channel.queueDeclare( 'myQueue' );	
 } finally {
 	channel.close();
 }
 ```
+
+An even better approach is to use the `channelDo()` method in the client CFC. 
+
+```js
+getRabbitClient().channelDo( (channel)=> channel.queueDeclare( 'myQueue' ) );
+```
+
+The `channelDo()` method accepts a closure and
+* Creates the channel for you
+* Passes it to your UDF for usage
+* Auto-closes it when done in an internal finally block
 
 The way AMQP works is that if any communication error happens, the channel will be automatically closed which means no more actions can be take with it.  Please account for this in your code and 
 ask the client for a fresh channel if the previous one encounters an error.  
