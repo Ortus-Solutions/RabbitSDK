@@ -25,6 +25,17 @@ component {
 	}
 
 	function onLoad(){
+		// Stupid Lucee bug 
+		// https://luceeserver.atlassian.net/browse/LDEV-2296
+		// This class represents the Rabbit Consumer instance which implements the Rabbit Consumer interface
+		// If not cleared on every server resetart, Lucee will stop recognizing that the class implements the proper interface
+		// and java reflection calls to channel.basicConsume() will start failing.
+		
+		var luceeRPCProxyClassFile = expandPath('/lucee/../cfclasses/RPC/Vdc65763751ec3c6ac73173d2c2e627944384.class');
+		if( server.keyExists( 'lucee' ) && fileExists( luceeRPCProxyClassFile ) ) {
+			fileDelete( luceeRPCProxyClassFile );
+		}
+		
 	/*	var javaloader = controller.getWireBox().getInstance( "loader@cbjavaloader" );
 		controller.getConfigSettings().modules.cbjavaloader.settings.loadColdFusionClassPath = true;
 		javaloader.setup();

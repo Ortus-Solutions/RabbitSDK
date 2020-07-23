@@ -64,6 +64,24 @@
 					var channel = getRabbitClient().createChannel();
 					channel.close();
 				});
+	
+				it( 'can have more than one instance', function(){
+					getWireBox().getBinder().map( 'PublishClient' ).to( 'rabbitsdk.models.RabbitClient' );
+					getWireBox().getBinder().map( 'ConsumerClient' ).to( 'rabbitsdk.models.RabbitClient' );
+					
+					var publishClient = getRabbitClient( 'PublishClient' );
+					var consumerClient = getRabbitClient( 'ConsumerClient' );
+					
+					expect( publishClient.getClientID() ).notToBe( consumerClient.getClientID() );
+					
+					publishClient.shutdown();
+					consumerClient.shutdown();
+				});
+					
+				it( 'can use auto-closing channels', function(){
+					getRabbitClient().channelDo( (channel)=>channel.queueDeclare( 'myQueue' ) );
+				});
+
 				
 			});
 
@@ -265,9 +283,22 @@
 				
 				it( 'can start consumer thread', function(){
 					var channel1 = getRabbitClient().createChannel().queueDeclare( 'myQueue' )
-						.startConsumer( queue='myQueue', autoAcknowledge=false, udf=(message,log)=>{ log.info( 'Consumer 1 Message received: #message.getBody()#' ); message.acknowledge(); } );
+						.startConsumer( 
+							queue='myQueue',
+							autoAcknowledge=false,
+							udf=(message,log)=>{
+								log.info( 'Consumer 1 Message received: #message.getBody()#' );
+								message.acknowledge();
+							} );
+							
 					var channel2 = getRabbitClient().createChannel().queueDeclare( 'myQueue' )
-						.startConsumer( queue='myQueue', autoAcknowledge=false, udf=(message,log)=>{ log.info( 'Consumer 2 Message received: #message.getBody()#' ); return true; } );
+						.startConsumer(
+							queue='myQueue',
+							autoAcknowledge=false,
+							udf=(message,log)=>{
+								log.info( 'Consumer 2 Message received: #message.getBody()#' );
+								return true;
+							} );
 					
 					channel1
 						.publish( body='Message 1', routingKey='myQueue' )
@@ -276,7 +307,7 @@
 						.publish( body='Message 4', routingKey='myQueue' )
 						.publish( body='Message 5', routingKey='myQueue' )
 						.publish( body='Message 6', routingKey='myQueue' );
-				
+
 					sleep(500);
 					var count = channel1.getQueueMessageCount( 'myQueue' );
 					
@@ -307,10 +338,8 @@
 		});
 	}
 
-
-
-	private function getRabbitClient(){
-		return getWireBox().getInstance( 'RabbitClient@rabbitsdk' );
+	private function getRabbitClient( name='RabbitClient@rabbitsdk' ){
+		return getWireBox().getInstance( name );
 	}
 
 }

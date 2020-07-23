@@ -3,7 +3,9 @@
 * Copyright Since 2005 ColdBox Framework by Luis Majano and Ortus Solutions, Corp
 * www.ortussolutions.com
 * ---
-* RabbitMQ Client
+* RabbitMQ Client.  This is a singleton that represents a single connection to Rabbit.
+* Only create me once and ask me to create channels for every new thread that wants to interact with the server.
+* ALWAYS make sure you call the shutdown() method when you're done using or you'll leave orphaned connections open.
 */
 component accessors=true singleton {
 	
@@ -100,6 +102,24 @@ component accessors=true singleton {
 		return wirebox.getInstance( 'channel@rabbitsdk' )
 			.setConnection( getConnection() )
 			.configure();
+	}
+
+	/**
+	 * Creates an auto-closing channel for a single operation.  Do not store the channel refernce passed to the callback
+	 * as it will be closed as soon as the UDF is finished.  Any value returned from the UDF will be returned from the
+	 * channelDo method.  This is preferred for one-off operations so you don't need to worry about closing the channel.
+	 * If you have a large number of operations to perform on the channel, it is best to re-use the same channel and 
+	 * simply remember to close it when you're finished.
+	 */
+	function channelDo( required any udf ) {
+		try {
+			var channel = createChannel();
+			return udf( channel ); 
+		} finally {
+			if( !isNull( channel ) ) {
+				channel.close();
+			}
+		}
 	}
 
 	/**
