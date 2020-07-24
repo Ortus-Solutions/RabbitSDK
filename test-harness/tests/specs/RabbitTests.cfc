@@ -31,7 +31,7 @@
 
 	// executes after all suites+specs in the run() method
 	function afterAll(){
-		getRabbitClient().shutdown();
+	//	getRabbitClient().shutdown();
 		super.afterAll();
 	}
 
@@ -334,6 +334,49 @@
 						.stopConsumer() ).toThrow( regex='There is no consumer currenlty running on this channel' );
 				});
 					
+			});
+			describe( 'channel-auto-closing cnveience methods', function(){
+					
+				it( 'can create queue', function(){
+					getRabbitClient().queueDeclare( 'myQueue' );
+				});
+	
+				it( 'can bind queue', function(){
+					getRabbitClient().queueDeclare( 'myQueue' ).queueBind( 'myQueue', 'amq.direct', 'routing.key' );
+				});
+	
+				it( 'can delete queue', function(){
+					getRabbitClient().queueDeclare( 'myQueue' ).queueDelete( 'myQueue' );
+				});
+	
+				it( 'can purge queue', function(){
+					getRabbitClient().queueDeclare( 'myQueue' ).queuePurge( 'myQueue' );
+				});
+	
+				it( 'can check if queue exists', function(){
+					getRabbitClient().queueDeclare( 'myQueue' );
+					var exists1 = getRabbitClient().queueExists( 'myQueue' );
+					getRabbitClient().queueDelete( 'myQueue' );
+					var exists2 = getRabbitClient().queueExists( 'myQueue' );
+					
+					expect( exists1 ).toBeBoolean();
+					expect( exists1 ).toBeTrue();
+					expect( exists2 ).toBeFalse();
+					
+				});
+	
+				it( 'can get count of messages in queue', function(){
+					getRabbitClient().queueDeclare( 'myQueue' ).queuePurge( 'myQueue' );
+					var count1 = getRabbitClient().getQueueMessageCount( 'myQueue' );
+					getRabbitClient().publish( 'My Message', 'myQueue' );
+					// Publish is async
+					sleep(250);
+					var count2 = getRabbitClient().getQueueMessageCount( 'myQueue' );
+					
+					expect( count1 ).toBeNumeric();
+					expect( count1 ).toBe( 0 );
+					expect( count2 ).toBe( 1 );
+				});
 			});
 		});
 	}

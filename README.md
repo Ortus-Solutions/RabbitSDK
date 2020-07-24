@@ -66,7 +66,7 @@ Here are the major CFCs you need to know about:
 ## RabbitClient
 
 Create this only once and re-use over the life of your app.  The CFC is marked as a singleton, so if you are using WireBox to access it, you don't need to manually cache it anywhere.
-Simply inject it wherever you need and use it.  It is very imporatnt to call the `shutdown()` method to release the connection when your app is shutting down or reiniting.
+Simply inject it wherever you need and use it.  It is very important to call the `shutdown()` method to release the connection when your app is shutting down or reiniting.
 
 ```js
 wirebox.getInstance( 'RabbitClient@rabbitsdk' );
@@ -96,7 +96,6 @@ map( 'ConsumerClient' ).to( 'rabbitsdk.models.RabbitClient' );
 
 // In your application
 wirebox.getInstance( 'ConsumerClient' )
-	.createChannel()
 	.startConsumer( 
 		queue='myQueue',
 		udf=(message,log)=>{
@@ -111,73 +110,105 @@ wirebox.getInstance( 'PublishClient' )
 
 ```
 
-## Channel
-
-Create a new channel for every new page request and do not share the same channel between threads.  The channel's are technically thread safe, but only one thread can use the channel at a time
-so it would create an unwanted bottleneck.  Pretty much all interactions with Rabbit happen on a channel object.
-
-```js
-var channel = rabbitClient.createChannel();
-```
-
-Make sure to call `close()` on a channel when you're done.  This is important or the channel will be left open forever and there is a limited number of channels that can be open for a connection.
-In case you're code errors, it is recommended to use a `finally` block to ensure the close always happens.
-
-```js
-try {
-	var channel = rabbitClient.createChannel();
-	channel.queueDeclare( 'myQueue' );	
-} finally {
-	channel.close();
-}
-```
-
-An even better approach is to use the `channelDo()` method in the client CFC. 
-
-```js
-getRabbitClient().channelDo( (channel)=> channel.queueDeclare( 'myQueue' ) );
-```
-
-The `channelDo()` method accepts a closure and
-* Creates the channel for you
-* Passes it to your UDF for usage
-* Auto-closes it when done in an internal finally block
-
-The way AMQP works is that if any communication error happens, the channel will be automatically closed which means no more actions can be take with it.  Please account for this in your code and 
-ask the client for a fresh channel if the previous one encounters an error.  
+Interactions with Rabbit actually happen over a channel, but the rabbitClient has a convenience method for all operations that automatically create and close the channel for you.
 
 All methods that don't return some explicit value return `this` so you can do method chaining like so:
 
 ```js
-rabbitClient.createChannel()
-	.queueDeclare( 'myQueue' );
-	.queuePurge( 'myQueue' );	
-	.close();
+rabbitClient
+	.queueDeclare( 'myQueue' )
+	.queuePurge( 'myQueue' )
+	.publish( 'My message', 'myQueue' );
+```  
+
+If you have a large number of operations and you want to perform them on the same channel then the best approach is to use the `batch()` method in the client CFC.  It's less network traffic to re-use the same channel
+so sending 1,000 messages is something you'd want to do over a single channel for the best performance. 
+
+```js
+rabbitClient.batch( (channel)=> {
+	channel
+		.queueDeclare( 'myQueue' )
+		.queuePurge( 'myQueue' )
+		// This could easily be a dynamic loop over a query, etc
+		.publish( 'Message 1', 'myQueue' )
+		.publish( 'Message 2', 'myQueue' )
+		.publish( 'Message 3', 'myQueue' )
+		.publish( 'Message 4', 'myQueue' ); 
+});
+```
+
+The `batch()` method accepts a closure and
+* Creates the channel for you
+* Passes it to your UDF for usage
+* Auto-closes it when done in an internal finally block
+
+### Send a Message
+
+You can minimally publish a message with the routing key and message text.
+
+```js
+rabbitClient.publish( 'My message', 'myQueue' );
+```
+
+You can publish complex data like structs or arrays and the message will be automatically JSON serialized for you and deserialized when you read the message back.
+
+```js
+var data = {
+	name:'brad',
+	age:40,
+	hair:'red',
+	likes:[
+		'music',
+		'computers',
+		'procrastinating'
+	]
+};
+rabbitClient.publish( data, 'myQueue' );
+```
+
+Rabbit also allows you to send additional properties for a message.  Most properties are a string value, but headers are a struct of name/value pairs.  You can see a full list
+of supported properties below in the `Message` section.
+
+```js
+rabbitClient.publish( 
+			body='My Message',
+			routingKey='myQueue',
+			props={
+				'contentEncoding':'UTF-8',
+				'contentType':'text/plain',
+				'deliveryMode':1,
+				'headers':{
+					'header 1' :'value 1',
+					'header 2' :'value 2',
+					'header 3' :'value 3'
+				},
+				'priority':5
+			}
+		);
 ```
 
 ### Get a single message
 
-You can consume a single message at a time like so.  See the `Message` section below.
+You can consume a single message at a time like so.  See the `Message` section below.  
 
 ```js
-var message = channel.getMessage( 'myQueue' );
+var message = rabbitClient.getMessage( 'myQueue' );
 ```
 
 ### Start a consumer
 
 The recommended way to process messages is to start a consumer.  Each channel can have a single consumer started.  A consumer only needs to be started once.  The consumer will run until it is stopped, the channel is closed, or the client is shutdown.
-A consumer runs in a separate thread so starting the consumer is a non-blocking operation.  You pass a UDF/closure to the consumer which will be called once for every message that comes in.
+A consumer runs in a separate thread so starting the consumer is a non-blocking operation.  You pass a UDF/closure to the consumer which will be called once for every message that comes in.  
 
 ```js
-rabbitClient
-	.createChannel()
-	.startConsumer( 
-		queue='myQueue',
-		autoAcknowledge=false,
-		udf=(message,log)=>{
-			log.info( 'Consumer 1 Message received: #message.getBody()#' );
-			message.acknowledge();
-		} );
+var channel = rabbitClient
+		.startConsumer( 
+			queue='myQueue',
+			autoAcknowledge=false,
+			udf=(message,log)=>{
+				log.info( 'Consumer 1 Message received: #message.getBody()#' );
+				message.acknowledge();
+			} );
 ```
 
 The callback UDF receives two arguments:
@@ -185,19 +216,27 @@ The callback UDF receives two arguments:
 * **message** - An instance of the `Message` CFC outlined below
 * **log** - An instance of the LogBox logger from the consumer class, useful for debugging.
 
-You can start more than one consumer.  Simply create a new channel for each consumer, and don't close the channel until you stop the consumer.
+The `startConsume()` method returns a `Channel` instance which you can use to stop the consumer later.   When you start more than one consumer, a new channel is created for each one.  
+Save the channel refernce so you can stop the consumer later.  Closing the channel will also stop the consumer.
 
 ```js
-var channel1 = rabbitClient.createChannel().startConsumer( 'myQueue', ()=>{} );
-var channel2 = rabbitClient.createChannel().startConsumer( 'myQueue', ()=>{} );
-var channel3 = rabbitClient.createChannel().startConsumer( 'myQueue', ()=>{} );
+var channel1 = rabbitClient.startConsumer( 'myQueue', ()=>{} );
+var channel2 = rabbitClient.startConsumer( 'myQueue', ()=>{} );
+var channel3 = rabbitClient.startConsumer( 'myQueue', ()=>{} );
+
+
+// Later on, after you're done processing messages:
+channel1.close()
+channel2.close()
+channel3.close()
+```
 
 When you have more than one consumer, they will compete for messages and work them in parallel.  By default, a consumer will only pull one message at a time to work.  This is ideal for several consumers completing
 tasks that take a while to process and you want to evenly distribute load among the consumers.  If you have a very large number of messages and processing time is very fast, you can improve performance by increasing your
 prefetch amount so a consumer grabs more than one message to work at a time reduces network traffic between messages.
 
 ```js
-rabbitClient.createChannel().startConsumer( name='myQueue', udf=()=>{}, prefetch=10 );
+rabbitClient.startConsumer( name='myQueue', udf=()=>{}, prefetch=10 );
 ```
 
 The consumer above will fetch up to 10 messages at a time to process (if that many are available in the queue)
@@ -269,10 +308,7 @@ You can create, remove, and purge queues from the channel API.
 Creating a queue is idempotent, meaning you can call this as many times as you like, and if the queue already exists, nothing happens.
 
 ```js
-rabbitClient
-	.createChannel()
-	.queueDeclare( 'myQueue' )
-	.close();
+rabbitClient.queueDeclare( 'myQueue' );
 ```
 
 Creating a queue has the following additional arguments
@@ -287,19 +323,14 @@ A queue binding controls what exchange and routing keys will deliver to the queu
 
 ```js
 rabbitClient
-	.createChannel()
 	.queueDeclare( 'myQueue' )
-	.queueBind( queue='myQueue', exchange='amq.direct', routingKey='routing.key' )
-	.close();
+	.queueBind( queue='myQueue', exchange='amq.direct', routingKey='routing.key' );
 ```
 
 ## Delete queue
 
 ```js
-rabbitClient
-	.createChannel()
-	.queueDelete( 'myQueue' )
-	.close();
+rabbitClient.queueDelete( 'myQueue' );
 ```
 
 Deleting a queue has the following additional arguments
@@ -313,10 +344,7 @@ Deleting a queue has the following additional arguments
 Purging a queue removes all messages.  This is probably only something you'd need for testing.
 
 ```js
-rabbitClient
-	.createChannel()
-	.queuePurge( 'myQueue' )
-	.close();
+rabbitClient.queuePurge( 'myQueue' );
 ```
 	
 ## Check if queue exists
@@ -325,10 +353,7 @@ Returns true if queue exists, false if it doesn't.  Be careful calling this meth
 so it probably doesn't perform great if the queue you are checking doesn't exist most of the time.
 
 ```js
-var exists = rabbitClient
-	.createChannel()
-	.queueExists( 'myQueue' )
-	.close();
+var exists = rabbitClient.queueExists( 'myQueue' );
 ```
 
 ## Get count of messages in a queue
@@ -336,11 +361,35 @@ var exists = rabbitClient
 Returns count of the messages of the given queue.  Doesn't count messages which waiting acknowledges or published to queue during transaction but not committed yet.  
 
 ```js
-var count = rabbitClient
-	.createChannel()
-	.getQueueMessageCount( 'myQueue' )
-	.close();
+var count = rabbitClient.getQueueMessageCount( 'myQueue' );
 ```
+
+## Channel
+
+All Rabbit interactions actually happen over a channel.  All of the methods on the rabbitClient CFC automatically create and close a channel on your behalf for every operation.
+You can  also create your own channel to use directly so you can re-use it.  Do not share the same channel between threads.  The channel's are technically thread safe, but only one thread can use the channel at a time
+so it would create an unwanted bottleneck.  Pretty much all interactions with Rabbit happen on a channel object.
+
+```js
+var channel = rabbitClient.createChannel();
+```
+
+Make sure to call `close()` on a channel when you're done.  This is important or the channel will be left open forever and there is a limited number of channels that can be open for a connection.
+In case you're code errors, it is recommended to use a `finally` block to ensure the close always happens.
+
+```js
+try {
+	var channel = rabbitClient.createChannel();
+	channel.queueDeclare( 'myQueue' );	
+} finally {
+	channel.close();
+}
+```
+
+The way AMQP works is that if any communication error happens, the channel will be automatically closed which means no more actions can be take with it.  Please account for this in your code and 
+ask the client for a fresh channel if the previous one encounters an error.  
+
+
 
 ## Sponsorship
 

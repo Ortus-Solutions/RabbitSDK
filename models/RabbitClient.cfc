@@ -105,13 +105,13 @@ component accessors=true singleton {
 	}
 
 	/**
-	 * Creates an auto-closing channel for a single operation.  Do not store the channel refernce passed to the callback
+	 * Creates an auto-closing channel for multuple operations.  Do not store the channel refernce passed to the callback
 	 * as it will be closed as soon as the UDF is finished.  Any value returned from the UDF will be returned from the
-	 * channelDo method.  This is preferred for one-off operations so you don't need to worry about closing the channel.
-	 * If you have a large number of operations to perform on the channel, it is best to re-use the same channel and 
-	 * simply remember to close it when you're finished.
+	 * batch method.  
+	 * This allows you to not need to worry about closing the channel.  Also, if you have a large number of operations to 
+	 * perform on the channel, you can perform them all inside your UDF.
 	 */
-	function channelDo( required any udf ) {
+	function batch( required any udf ) {
 		try {
 			var channel = createChannel();
 			return udf( channel ); 
@@ -151,5 +151,150 @@ component accessors=true singleton {
 	boolean function hasConnection() {
 		return !isNull( variables.connection );
 	}
-
+	
+	
+	// CONVEIENCE METHODS THAT AUTOMATICALLY HANDLE YOUR CHANNEL FOR YOU
+	
+	
+	
+	/**
+	* @name the name of the queue
+	* @durable true if we are declaring a durable queue (the queue will survive a server restart)
+	* @exclusive true if we are declaring an exclusive queue (restricted to this connection)
+	* @autoDelete true if we are declaring an autodelete queue (server will delete it when no longer in use)
+	* @queueArguments  Struct of other properties (construction arguments) for the queue
+	* 
+	* Declare a new quueue.  Nothing happens if this queue already exists.
+	*/
+	function queueDeclare(
+		required string name,
+		boolean durable=false,
+		boolean exclusive=false,
+		boolean autoDelete=false,
+		struct queueArguments={}
+	) {
+		var args = arguments;
+		batch( (channel)=>channel.queueDeclare( argumentCollection=args ) );
+		return this;
+	}
+	
+	/**
+	* @name the name of the queue
+	* @ifUnused true if the queue should be deleted only if not in use
+	* @ifEmpty true if the queue should be deleted only if empty
+	* Delete a queue
+	*/
+	function queueDelete(
+		required string name,
+		boolean ifUnused=false,
+		boolean ifEmpty=false
+	) {
+		var args = arguments;
+		batch( (channel)=>channel.queueDelete( argumentCollection=args ) );
+		return this;
+	}
+	
+	
+	/**
+	* @queue the name of the queue
+	* @exchange the name of the exchange
+	* @routingKey the routing key to use for the binding
+	* @bindArguments Struct of other properties (binding parameters)
+	* 
+	* Bind a queue to an exchange.
+	*/
+	function queueBind(
+		required string queue,
+		required string exchange,
+		required string routingKey,
+		struct bindArguments={}
+	) {
+		var args = arguments;
+		batch( (channel)=>channel.queueBind( argumentCollection=args ) );
+		return this;
+	}
+	
+	/**
+	* @queue the name of the queue
+	* 
+	* Purges the contents of the given queue.
+	*/
+	function queuePurge( required string queue ) {
+		var args = arguments;
+		batch( (channel)=>channel.queuePurge( argumentCollection=args ) );
+		return this;
+	}
+	
+	/**
+	* @queue the name of the queue
+	* 
+	* Returns count of the messages of the given queue.
+	* Doesn't count messages which waiting acknowledges or published to queue during transaction but not committed yet.
+	*/
+	function getQueueMessageCount( required string queue ) {
+		var args = arguments;
+		return batch( (channel)=>channel.getQueueMessageCount( argumentCollection=args ) );
+	}
+	
+	/**
+	* @queue the name of the queue
+	* 
+	* Returns true if queue exists, false if it doesn't.  Be careful calling this method under load as it 
+	* catches a thrown exception if the queue doesn't exist so it probably doesn't perform great if the queue you
+	* are checking doesn't exist most of the time.
+	*/
+	boolean function queueExists( required string queue ) {
+		var args = arguments;
+		return batch( (channel)=>channel.queueExists( argumentCollection=args ) );
+	}
+	
+	/**
+	* @body The body of the message. Either a string or a complex object which will be JSON serialized.
+	* @exchange the name of the exchange
+	* @routingKey case sensitive routing key to use for the binding
+	* @props Struct of other properties for the message - routing headers etc
+	* 
+	* Publish a message
+	*/
+	function publish(
+		required any body,
+		required string routingKey,
+		string exchange='',
+		struct props={}
+	) {
+		var args = arguments;
+		batch( (channel)=>channel.publish( argumentCollection=args ) );
+		return this;
+	}
+	
+	/**
+	* @queue the name of the queue
+	* @autoAcknowledge true if the server should consider messages acknowledged once delivered; false if the server should expect explicit acknowledgements
+	*
+	* Get a single message from a queue.  If there are no messages in the queue, null will be returned.
+	*/
+	function getMessage(
+		required string queue,
+		boolean autoAcknowledge=true
+	) {
+		var args = arguments;
+		return batch( (channel)=>channel.getMessage( argumentCollection=args ) );
+	}
+	
+	/**
+	* @queue Name of the queue to consume
+	* @autoAcknowledge Automatically ackowledge each message as processed
+	* @prefetch Number of messages this consumer should fetch at once. 0 for unlimited
+	*/
+	function startConsumer(
+		required string queue,
+		any udf,
+		boolean autoAcknowledge=true,
+		numeric prefetch=1,
+		name=''
+	) {
+		var args = arguments;
+		return batch( (channel)=>channel.startConsumer( argumentCollection=args ) );
+	}
+	
 }
