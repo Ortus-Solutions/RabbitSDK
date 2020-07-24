@@ -81,7 +81,7 @@ Each `RabbitClient` instance contains a single connection which is auto-created 
 
 ```js
 moduleSettings = {
-	// here we are pulling from environment variables, bu
+	// here we are pulling from environment variables, by
 	// but these can also just be hard-coded in
 	rabbitsdk = {
 		host : getSystemSetting( 'rabbit_host' ),
@@ -91,13 +91,12 @@ moduleSettings = {
 		useSSL : getSystemSetting( 'rabbit_useSSL' )
 	}
 };
-```   
+```
 
-
-You can also manually create your connect, which only needs to happen once:
+You can also manually create your connection, which only needs to happen once:
 
 ```js
-rabbitClient.connect( host='localhost', port=5672, username='guest', password='guest' );
+rabbitClient.connect( host='localhost', port=5672, username='guest', password='guest', virtualHost='/', useSSL=true );
 ```   
 
 In ColdBox, the RabbitClient will register a `prereinit` interceptor listener to shut itself down when the framework reinits.  If you have another scenario such as a test case suite that simply clears the application scope 
@@ -384,7 +383,7 @@ var count = rabbitClient.getQueueMessageCount( 'myQueue' );
 
 All Rabbit interactions actually happen over a channel.  All of the methods on the rabbitClient CFC automatically create and close a channel on your behalf for every operation.
 You can  also create your own channel to use directly so you can re-use it.  Do not share the same channel between threads.  The channel's are technically thread safe, but only one thread can use the channel at a time
-so it would create an unwanted bottleneck.  Pretty much all interactions with Rabbit happen on a channel object.
+so it would create an unwanted bottleneck.
 
 ```js
 var channel = rabbitClient.createChannel();

@@ -34,5 +34,8 @@
     ],
     "scripts":{
         "toMaster":"recipe build/toMaster.boxr"
+    },
+    "testbox":{
+        "runner":"/test-harness/tests/runner.cfm"
     }
 }

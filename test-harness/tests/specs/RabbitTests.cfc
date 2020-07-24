@@ -38,6 +38,7 @@
 /*********************************** BDD SUITES ***********************************/
 
 	function run(){
+		
 		describe( 'Rabbitsdk Module', function(){
 
 			beforeEach(function( currentSpec ){
