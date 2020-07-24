@@ -18,3 +18,4 @@ test-harness/.env
 /.project
 /lib/
 settings.xml
+/.env
