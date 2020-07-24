@@ -16,8 +16,13 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    
+    services:
+      rabbitmq:
+        image: rabbitmq:latest
+        ports:
+          - 5672:5672
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
@@ -52,12 +57,14 @@ jobs:
         # Replace version so builder can issue it
         box package set version=@build.version@+@build.number@
         box install
+        cp .env.example .env
         # Startup the harness
         cd test-harness
         # run our dependency install to ensure the workbench is in place
         box install
+        cd ../
         # run our matrix server
-        box server start serverConfigFile="server-${ENGINE}.json"
+        box server start
         # Startup the app
         #- curl http://localhost:60299
         # Debugging of tests
