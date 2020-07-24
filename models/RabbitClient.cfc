@@ -48,7 +48,7 @@ component accessors=true singleton {
 	 * connection details have been provided in the module settings.
 	 * This RabbitClient wraps a single, persisted conenction to RabbitMQ.
 	 */
-	function connect( string host, string port, string username, string password, boolean quiet=false ){
+	function connect( string host, string port, string username, string password, string virtualHost, boolean useSSL, boolean quiet=false ){
 		
 		if( hasConnection() ) {
 			if( quiet ) {
@@ -69,6 +69,9 @@ component accessors=true singleton {
 			var thisUsername = arguments.username ?: settings.username ?: '';
 			var thisPassword = arguments.password ?: settings.password ?: '';
 			var thisPort = arguments.port ?: settings.port ?: '';
+			var thisVirtualHost = arguments.virtualHost ?: settings.virtualHost ?: '';
+			var thisUseSSL= arguments.useSSL ?: settings.useSSL ?: '';
+			
 			
 			if( !thisHost.len() && !thisUsername.len() ) {
 				throw( 'No Rabbit Host and username configured.  Cannot connect.' );
@@ -81,6 +84,15 @@ component accessors=true singleton {
 			factory.setHost( thisHost );
 			factory.setUsername( thisUsername );
 			factory.setPassword( thisPassword );
+			
+			if( isBoolean( thisUseSSL ) ) {
+				factory.useSslProtocol( thisUseSSL );	
+			}
+			
+			if( len( thisVirtualHost ) ) {
+				factory.setVirtualHost( thisVirtualHost );	
+			}
+			
 			factory.setRequestedHeartbeat( 20 );
 			if( val( thisPort ) != 0 ) {
 				factory.setPort( thisPort );	

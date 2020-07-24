@@ -77,7 +77,23 @@ or
 property name='rabbitClient' inject='RabbitClient@rabbitsdk';
 ```
 
-Each `RabbitClient` instance contains a single connection which is auto-created on first use if you have supplied the connection details in the module settings.
+Each `RabbitClient` instance contains a single connection which is auto-created on first use if you have supplied the connection details in the module settings in `/config/Coldbox.cfc`.
+
+```js
+moduleSettings = {
+	// here we are pulling from environment variables, bu
+	// but these can also just be hard-coded in
+	rabbitsdk = {
+		host : getSystemSetting( 'rabbit_host' ),
+		username : getSystemSetting( 'rabbit_username' ),
+		password : getSystemSetting( 'rabbit_password' ),
+		virtualHost : getSystemSetting( 'rabbit_virtualHost' ),
+		useSSL : getSystemSetting( 'rabbit_useSSL' )
+	}
+};
+```   
+
+
 You can also manually create your connect, which only needs to happen once:
 
 ```js

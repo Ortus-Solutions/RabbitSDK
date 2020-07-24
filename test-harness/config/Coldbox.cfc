@@ -72,7 +72,9 @@
 			rabbitsdk = {
 				host : getSystemSetting( 'rabbit_host' ),
 				username : getSystemSetting( 'rabbit_username' ),
-				password : getSystemSetting( 'rabbit_password' )
+				password : getSystemSetting( 'rabbit_password' ),
+				virtualHost : getSystemSetting( 'rabbit_virtualHost' ),
+				useSSL : getSystemSetting( 'rabbit_useSSL' )
 			}
 		};
 
