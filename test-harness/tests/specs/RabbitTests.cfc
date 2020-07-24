@@ -79,7 +79,7 @@
 				});
 					
 				it( 'can use auto-closing channels', function(){
-					getRabbitClient().channelDo( (channel)=>channel.queueDeclare( 'myQueue' ) );
+					getRabbitClient().batch( (channel)=>channel.queueDeclare( 'myQueue' ) );
 				});
 
 				
