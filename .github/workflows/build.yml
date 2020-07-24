@@ -26,7 +26,7 @@ jobs:
       uses: actions/setup-java@v1.4.0
       with:
         # The Java version to make available on the path. Takes a whole or semver Java version, or 1.x syntax (e.g. 1.8 => Java 8.x). Early access versions can be specified in the form of e.g. 14-ea, 14.0.0-ea, or 14.0.0-ea.28
-        java-version: => 1.8 
+        java-version: 11 
 
     - name: Setup RabbitMQ with username and password
       uses: getong/rabbitmq-action@v1.2
@@ -34,14 +34,18 @@ jobs:
         rabbitmq user: guest
         rabbitmq password: guest
 
-    - name: Run a multi-line script
+    - name: Install CommandBox
       run: |
-        MODULE_ID=rabbitsdk
         curl -fsSl https://downloads.ortussolutions.com/debs/gpg | sudo apt-key add -
         sudo echo "deb http://downloads.ortussolutions.com/debs/noarch /" | sudo tee -a /etc/apt/sources.list.d/commandbox.list
         sudo apt-get update && sudo apt-get --assume-yes install rsync jq commandbox
         box install commandbox-cfconfig,commandbox-dotenv,commandbox-docbox
         box config set endpoints.forgebox.APIToken=$FORGEBOX_API_TOKEN > /dev/null
+
+
+    - name: Do Build
+      run: |
+        MODULE_ID=rabbitsdk
         # Set Current Version
         TARGET_VERSION=`cat ${{github.workspace}}/box.json | jq '.version' -r`
         echo "Starting build for $MODULE_ID v$TARGET_VERSION"
