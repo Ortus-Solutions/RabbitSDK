@@ -6,9 +6,12 @@ name: CI
 # events but only for the master branch
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
+      - development
   pull_request:
-    branches: [ master ]
+    branches:
+      - development
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -100,7 +103,20 @@ jobs:
         AWS_S3_BUCKET: apidocs.ortussolutions.com
         SOURCE_DIR: ${{github.workspace}}/.tmp/apidocs
         DEST_DIR: $MODULE_ID/$TARGET_VERSION
-        
+
+    - name: Publish to ForgeBox
+      if:
+        contains('
+          refs/heads/master
+          refs/heads/development
+        ', github.ref) 
+      run: |
+        cd ${{github.workspace}}/.tmp/${MODULE_ID}
+        cat box.json
+        box forgebox publish
+
+
+
     - name: On failure
       if: ${{ failure() }}
       run: |
