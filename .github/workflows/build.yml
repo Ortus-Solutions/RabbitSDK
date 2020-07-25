@@ -47,6 +47,7 @@ jobs:
       run: |
         # Set Current Version
         TARGET_VERSION=`cat ${{github.workspace}}/box.json | jq '.version' -r`
+        echo "::set-env name=TARGET_VERSION::$TARGET_VERSION"
         echo "Starting build for $MODULE_ID v$TARGET_VERSION"
         # Replace version so builder can issue it
         box package set version=@build.version@+@build.number@
