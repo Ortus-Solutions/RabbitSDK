@@ -416,6 +416,54 @@
 				});
 				
 			});
+			
+			
+
+			describe( 'perf testsmanagement', function(){
+					
+			
+				it( 'can consume many messages', function(){
+					counter=0;
+					try {
+						var channel1 = getRabbitClient().createChannel().queueDeclare( 'myQueue' ).queuePurge( 'myQueue' )
+							.startConsumer( 
+								queue='myQueue',
+								consumer=(message,log)=>{
+									lock name="foo" type="exclusive" timeout=10 {counter++}
+									if( counter % 1000 == 0 ) {
+										log.info( 'Message received: #counter#' );
+									}
+								}
+							);
+						var channel2 = getRabbitClient().createChannel().queueDeclare( 'myQueue' ).queuePurge( 'myQueue' )
+							.startConsumer( 
+								queue='myQueue',
+								consumer=(message,log)=>{
+									lock name="foo" type="exclusive" timeout=10 {counter++}
+									if( counter % 1000 == 0 ) {
+										log.info( 'Message received: #counter#' );
+									}
+								}
+							);
+						
+						loop from=1 to=5000 index="i" {
+							channel1.publish( body='Message #i#', routingKey='myQueue' );	
+						}
+	
+						sleep( 500 );
+							
+						while( channel1.getQueueMessageCount( 'myQueue' ) ){
+							sleep( 1000 );
+						}
+					} finally{
+						sleep( 1000 );
+						channel1.close();
+						channel2.close();
+					}
+				});
+				
+			});
+			
 		});
 	}
 

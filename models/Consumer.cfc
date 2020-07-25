@@ -119,7 +119,7 @@ component accessors="true"{
 			}
 		} catch( any e ) {
 			try {
-				log.error( 'Error in RabbitMQ Consumer [#consumerTag#]', e );
+				log.error( 'Error in RabbitMQ Consumer [#consumerTag#]', e.stacktrace );
 			} catch( any innerE ) {
 				err( e );
 				err( innerE );
