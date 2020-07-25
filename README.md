@@ -241,13 +241,13 @@ var channel = rabbitClient
 			
 ```
 
-And here is an example of specying a component.  Note, the `consumer` and `error` paramaters default to `onMessage` and `onError`.  They are provided here just for clarity, but could be omitted if not changed from the default.  Also, `component` can be either the instance or a CFC path or a WireBox mapping.  `wirebox.getInstance()` is used to create it.
+And here is an example of specying a component.  Note, the `consumer` and `error` parameters default to `onMessage` and `onError`.  They are provided here just for clarity, but could be omitted if not changed from the default.  Also, `component` can be either the instance or a CFC path or a WireBox mapping.  `wirebox.getInstance()` is used to create it.
 
 ```js
 var channel = getRabbitClient()
 		.startConsumer( 
 			queue='myQueue',
-			autoAcknowledge=true,
+			autoAcknowledge=false,
 			component='MyConsumer,
 			consumer='onMessage',
 			error='onError'
@@ -268,10 +268,18 @@ component {
 }
 ```
 
-The callback method (whether a closure or in a CFC) receives two arguments:
+The `consumer` callback method (whether a closure or in a CFC) receives three arguments:
 
 * **message** - An instance of the `Message` CFC outlined below
+* **channel** - The RabbitSDK Channel instance. You can use this channel to query the queue, send additional messages, etc.
 * **log** - An instance of the LogBox logger from the consumer class, useful for debugging.
+
+The `error` callback method (whether a closure or in a CFC) receives four arguments:
+
+* **message** - An instance of the `Message` CFC outlined below
+* **channel** - The RabbitSDK Channel instance. You can use this channel to query the queue, send additional messages, etc.
+* **log** - An instance of the LogBox logger from the consumer class, useful for debugging.
+* **exception** = The excepton object that was thrown from the `consumer` method.
 
 The `startConsume()` method returns a `Channel` instance which you can use to stop the consumer later.   When you start more than one consumer, a new channel is created for each one.  
 Save the channel refernce so you can stop the consumer later.  Closing the channel will also stop the consumer.
@@ -293,7 +301,7 @@ tasks that take a while to process and you want to evenly distribute load among 
 prefetch amount so a consumer grabs more than one message to work at a time reduces network traffic between messages.
 
 ```js
-rabbitClient.startConsumer( name='myQueue', udf=()=>{}, prefetch=10 );
+rabbitClient.startConsumer( name='myQueue', consumer=()=>{}, prefetch=10 );
 ```
 
 The consumer above will fetch up to 10 messages at a time to process (if that many are available in the queue)
