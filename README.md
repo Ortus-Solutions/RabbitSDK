@@ -1,4 +1,6 @@
-![CI](https://github.com/Ortus-Solutions/RabbitSDK/workflows/CI/badge.svg)
+[![CI](https://github.com/Ortus-Solutions/RabbitSDK/workflows/CI/badge.svg)](https://github.com/Ortus-Solutions/RabbitSDK/actions)
+
+
 
 
 # Welcome to the RabbitMQSDK Module
