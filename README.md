@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.org/Ortus-Solutions/RabbitSDK.svg?branch=development)](https://travis-ci.org/Ortus-Solutions/RabbitSDK)
+[![Actions Status](https://github.com/Ortus-Solutions/RabbitSDK/workflows/build/badge.svg)](https://github.com/Ortus-Solutions/RabbitSDK/actions)
+
 
 # Welcome to the RabbitMQSDK Module
 
