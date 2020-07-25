@@ -1,4 +1,4 @@
-[![Actions Status](https://github.com/Ortus-Solutions/RabbitSDK/workflows/build/badge.svg)](https://github.com/Ortus-Solutions/RabbitSDK/actions)
+![CI](https://github.com/Ortus-Solutions/RabbitSDK/workflows/CI/badge.svg)
 
 
 # Welcome to the RabbitMQSDK Module
