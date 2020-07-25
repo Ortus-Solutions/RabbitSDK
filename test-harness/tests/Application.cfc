@@ -23,7 +23,7 @@ component{
 	this.mappings[ "/coldbox" ] = rootPath & "/coldbox";
 
 	// UPDATE THE NAME OF THE MODULE IN TESTING BELOW
-	request.MODULE_NAME = "rabbitsdk";
+	request.MODULE_NAME = "RabbitSDK";
 
 	// The module root path
 	moduleRootPath = REReplaceNoCase( this.mappings[ "/root" ], "#request.module_name#(\\|/)test-harness(\\|/)", "" );
