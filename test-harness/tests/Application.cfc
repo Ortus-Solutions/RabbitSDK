@@ -27,8 +27,12 @@ component{
 
 	// The module root path
 	moduleRootPath = REReplaceNoCase( this.mappings[ "/root" ], "#request.module_name#(\\|/)test-harness(\\|/)", "" );
+	systemOutput( 'getDirectoryFromPath( getCurrentTemplatePath() ): ' & getDirectoryFromPath( getCurrentTemplatePath() ), 1 )
+	systemOutput( 'this.mappings[ "/root" ]: ' & this.mappings[ "/root" ], 1 )
+	systemOutput( 'moduleRootPath: ' & moduleRootPath, 1 )
 	this.mappings[ "/moduleroot" ] = moduleRootPath;
 	this.mappings[ "/#request.MODULE_NAME#" ] = moduleRootPath & "#request.MODULE_NAME#";
+	systemOutput( 'this.mappings[ "/#request.MODULE_NAME#" ]: ' & this.mappings[ "/#request.MODULE_NAME#" ], 1 )
 
 	this.javaSettings = {
 		loadPaths = directorylist( expandPath( moduleRootPath & '#request.MODULE_NAME#/lib' ), true, 'array', '*jar' ),
