@@ -43,7 +43,7 @@ jobs:
         sudo echo "deb http://downloads.ortussolutions.com/debs/noarch /" | sudo tee -a /etc/apt/sources.list.d/commandbox.list
         sudo apt-get update && sudo apt-get --assume-yes install rsync jq commandbox
         box install commandbox-cfconfig,commandbox-dotenv,commandbox-docbox
-        box config set endpoints.forgebox.APIToken=$FORGEBOX_API_TOKEN > /dev/null
+        box config set endpoints.forgebox.APIToken=${{ secrets.FORGEBOX_API_KEY }} > /dev/null
 
 
     - name: Do Build
