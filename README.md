@@ -225,6 +225,7 @@ Arguments:
 * **autoAcknowledge** - Automatically ackowledge each message as processed
 * **prefetch** - Number of messages this consumer should fetch at once. 0 for unlimited
 
+Here is an example of using ad-hoc closures to handle messages and errors:
 ```js
 var channel = rabbitClient
 		.startConsumer( 
@@ -238,15 +239,33 @@ var channel = rabbitClient
 				log.error( 'Error processing message #message.getBody()#.  Error message: #exception.message#' );
 			} );
 			
+```
+
+And here is an example of specying a component.  Note, the `consumer` and `error` paramaters default to `onMessage` and `onError`.  They are provided here just for clarity, but could be omitted if not changed from the default.  Also, `component` can be either the instance or a CFC path or a WireBox mapping.  `wirebox.getInstance()` is used to create it.
+
+```js
 var channel = getRabbitClient()
 		.startConsumer( 
 			queue='myQueue',
 			autoAcknowledge=true,
-			component=new tests.resources.MyConsumer(),
+			component='MyConsumer,
 			consumer='onMessage',
 			error='onError'
 		);
-			
+
+// MyConsumer.cfc
+component {
+	
+	function onMessage( message, channel, log ) {
+		log.info( 'My Consumer received message #message.getBody()#' );
+		message.acknowledge();
+	}
+	
+	function onError( message, channel, log, exception ) {
+		log.error( 'Error processing message #message.getBody()#.  Error message: #exception.message#' );
+	}
+	
+}
 ```
 
 The callback method (whether a closure or in a CFC) receives two arguments:
