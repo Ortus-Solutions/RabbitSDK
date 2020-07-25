@@ -1,5 +1,6 @@
 ﻿<cfscript>
 	getApplicationMetadata().mappings.each( (m)=>systemOutput( m & ' === ' & expandPath( m ), 1 ) );
+	getApplicationMetadata().mappings.each( (m,p)=>systemOutput( m & ' === ' & p, 1 ) );
 </cfscript>
 
 <cfsetting showDebugOutput="false">
