@@ -113,7 +113,7 @@ map( 'ConsumerClient' ).to( 'rabbitsdk.models.RabbitClient' );
 wirebox.getInstance( 'ConsumerClient' )
 	.startConsumer( 
 		queue='myQueue',
-		consumer=(message,log)=>{
+		consumer=(message, channel, log)=>{
 			log.info( 'Message received: #message.getBody()#' );
 		} );
 		
@@ -216,22 +216,35 @@ The recommended way to process messages is to start a consumer.  Each channel ca
 The consumer will run until it is stopped, the channel is closed, or the client is shutdown.
 A consumer runs in a separate thread so starting the consumer is a non-blocking operation.  You pass a UDF/closure or a CFC instance to the consumer which will be called once for every message that comes in.  
 
+Arguments:
+
+* **queue** - Name of the queue to consume
+* **consumer** - A UDF or CFC method name (when component is specified) to be called for each message. 
+* **error** - A UDF or CFC method name (when component is specified) to be called in case of an error in the consumer
+* **component** - Name or instance of component containing "onMessage" and/or "onError" methods.  Don't use if passing closures for "consumer" and "error"
+* **autoAcknowledge** - Automatically ackowledge each message as processed
+* **prefetch** - Number of messages this consumer should fetch at once. 0 for unlimited
+
 ```js
 var channel = rabbitClient
 		.startConsumer( 
 			queue='myQueue',
 			autoAcknowledge=false,
-			udf=(message,log)=>{
+			consumer=(message, channel, log)=>{
 				log.info( 'Consumer 1 Message received: #message.getBody()#' );
 				message.acknowledge();
+			},
+			error=(message, channel, log, exception)=>{
+				log.error( 'Error processing message #message.getBody()#.  Error message: #exception.message#' );
 			} );
 			
 var channel = getRabbitClient()
 		.startConsumer( 
 			queue='myQueue',
 			autoAcknowledge=true,
-			consumer=new tests.resources.MyConsumer(),
-			method='onMessage'
+			component=new tests.resources.MyConsumer(),
+			consumer='onMessage',
+			error='onError'
 		);
 			
 ```

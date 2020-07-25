@@ -51,9 +51,15 @@
 					var rabbitClient = getRabbitClient();
 					expect(	rabbitClient ).toBeComponent();
 				});
+					
+				it( 'should register library', function(){
+					var rabbitClient = getRabbitClient();
+					expect(	rabbitClient ).toBeComponent();
+				});
 	
 				it( 'should connect to server', function(){
 					getRabbitClient().connect( quiet=true );
+					expect( ()=>getRabbitClient().connect( quiet=false ) ).toThrow( regex='Client is already connected' );
 				});
 	
 				it( 'should shutdown on preinit', function(){
@@ -64,6 +70,12 @@
 				it( 'should connect to server', function(){
 					var channel = getRabbitClient().createChannel();
 					channel.close();
+				});
+	
+	
+				it( 'should error if no connection details', function(){
+					expect( ()=>new rabbitsdk.models.RabbitClient().createChannel() ).toThrow( regex='No Rabbit Host and username configured' );
+					
 				});
 	
 				it( 'can have more than one instance', function(){
@@ -129,13 +141,28 @@
 					expect( count1 ).toBe( 0 );
 					expect( count2 ).toBe( 1 );
 				});
-				
+	
+				it( 'can rethrow error not related to queue checking', function(){
+					var channel = getRabbitClient().createChannel();
+					// Force an internal error
+					channel.setChannel( '' )
+					expect( ()=>channel.queueExists( 'myQueue' ) ).toThrow();
+				});
+
 			});
 
 			describe( 'publishing', function(){
 					
 				it( 'can send a basic string message', function(){
 					getRabbitClient().createChannel().queueDeclare( 'myQueue' ).publish( 'My Message', 'myQueue' ).close();
+				});
+					
+				it( 'can validate bad message inputs', function(){
+					expect( ()=>getRabbitClient().publish( body='My Message', routingKey='myQueue', props={ 'userID' : 'guest', 'foo' : 'bar' } ) ).toThrow( regex='Unknown AMQP property' );
+				});
+					
+				it( 'can validate bad message inputs', function(){
+					expect( ()=>getRabbitClient().publish( body='My Message', routingKey='myQueue', props={ 'timestamp' : 'invalid' } ) ).toThrow( regex='Invalid message property timestamp' );
 				});
 					
 				it( 'can send a message with complex data', function(){
@@ -149,7 +176,14 @@
 							'procrastinating'
 						]
 					};
-					getRabbitClient().createChannel().queueDeclare( 'myQueue' ).publish( data, 'myQueue' ).close();
+					var channel = getRabbitClient().createChannel().queueDeclare( 'myQueue' ).queuePurge( 'myQueue' ).publish( data, 'myQueue' );
+					sleep( 250 );
+					var message = channel.getMessage( 'myQueue' );
+					expect( message.getBody() ).toBeStruct();
+					expect( message.getBody() ).toHaveKey( 'name' );
+					expect( message.getBody()[ 'name' ] ).toBe( 'brad' );
+					
+					channel.close();
 				});
 					
 				it( 'can send a message with properties', function(){
@@ -209,9 +243,11 @@
 					expect( message.getHeaders() ).toHaveKey( 'header 1' );
 					expect( message.getHeaders() ).toHaveKey( 'header 2' );
 					expect( message.getHeaders() ).toHaveKey( 'header 3' );
-					expect( message.getHeaders()[ 'header 1' ] ).toBe( 'value 1' );
-					expect( message.getHeaders()[ 'header 2' ] ).toBe( 'value 2' );
-					expect( message.getHeaders()[ 'header 3' ] ).toBe( 'value 3' );
+					expect( message.getHeader( 'header 1' ) ).toBe( 'value 1' );
+					expect( message.getHeader( 'header 2' ) ).toBe( 'value 2' );
+					expect( message.getHeader( 'header 3' ) ).toBe( 'value 3' );
+					expect( message.getHeader( 'does not exist', '__default__' ) ).toBe( '__default__' );
+					expect( isNull( message.getHeader( 'does not exist' ) ) ).toBeTrue();
 		
 				});
 					
@@ -287,16 +323,16 @@
 						.startConsumer( 
 							queue='myQueue',
 							autoAcknowledge=false,
-							consumer=(message,log)=>{
+							consumer=(message,channel,log)=>{
 								log.info( 'Consumer 1 Message received: #message.getBody()#' );
 								message.acknowledge();
 							} );
 							
-					var channel2 = getRabbitClient().createChannel().queueDeclare( 'myQueue' )
+					var channel2 = getRabbitClient()
 						.startConsumer(
 							queue='myQueue',
 							autoAcknowledge=false,
-							consumer=(message,log)=>{
+							consumer=(message,channel,log)=>{
 								log.info( 'Consumer 2 Message received: #message.getBody()#' );
 								return true;
 							} );
@@ -323,7 +359,7 @@
 						.startConsumer( 
 							queue='myQueue',
 							autoAcknowledge=true,
-							consumer=new tests.resources.MyConsumer() );
+							component=new tests.resources.MyConsumer() );
 							
 					channel
 						.publish( body='Message 1', routingKey='myQueue' )
@@ -338,10 +374,55 @@
 					channel.close();
 				});
 				
+				it( 'can call component onError method', function(){
+					application.consumerOnErrorFired=false;
+					var myComponent = new tests.resources.MyConsumer();
+					myComponent.onMessage = ()=>throw( 'I don''t like this message!' );
+					var channel = getRabbitClient()
+						.queueDeclare( 'myQueue' )
+						.queuePurge( 'myQueue' )
+						.startConsumer( 
+							queue='myQueue',
+							autoAcknowledge=true,
+							component=myComponent );
+							
+					channel.publish( body='Message 1', routingKey='myQueue' );
+
+					sleep(250);
+					var count = channel.getQueueMessageCount( 'myQueue' );
+					
+					expect( count ).toBe( 0 );
+					
+					channel.close();
+
+					expect( application.consumerOnErrorFired ).toBeTrue();
+
+				});
+				
+				it( 'can start consumer thread with component name', function(){
+					var channel = getRabbitClient().createChannel().queueDeclare( 'myQueue' )
+						.startConsumer( 
+							queue='myQueue',
+							autoAcknowledge=true,
+							component='tests.resources.MyConsumer' );
+							
+					channel.close();
+				});
+				
 				it( 'can stop consumer thread', function(){
 					getRabbitClient().createChannel().queueDeclare( 'myQueue' )
 						.startConsumer( 'myQueue', ()=>{} )
 						.stopConsumer();
+				});
+				
+				it( 'can reject invalid consumer arguments', function(){
+					expect( 
+						()=>getRabbitClient().startConsumer( queue='myQueue', consumer=()=>{}, error=()=>{}, component='tests.resources.MyConsumer' )
+					).toThrow( regex='When specifying component, "consumer" and "error" must be string names of methods in the component' );
+
+					expect( 
+						()=>getRabbitClient().startConsumer( queue='myQueue' )
+					).toThrow( regex='When not specifying a component, "consumer" must be a UDF/closure' );
 				});
 				
 				it( 'can not start consumer twice on same channel', function(){
@@ -428,7 +509,7 @@
 						var channel1 = getRabbitClient().createChannel().queueDeclare( 'myQueue' ).queuePurge( 'myQueue' )
 							.startConsumer( 
 								queue='myQueue',
-								consumer=(message,log)=>{
+								consumer=(message,channel,log)=>{
 									lock name="foo" type="exclusive" timeout=10 {counter++}
 									if( counter % 1000 == 0 ) {
 										log.info( 'Message received: #counter#' );
@@ -438,7 +519,7 @@
 						var channel2 = getRabbitClient().createChannel().queueDeclare( 'myQueue' ).queuePurge( 'myQueue' )
 							.startConsumer( 
 								queue='myQueue',
-								consumer=(message,log)=>{
+								consumer=(message,channel,log)=>{
 									lock name="foo" type="exclusive" timeout=10 {counter++}
 									if( counter % 1000 == 0 ) {
 										log.info( 'Message received: #counter#' );

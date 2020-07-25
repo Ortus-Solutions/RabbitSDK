@@ -297,20 +297,22 @@ component accessors=true singleton {
 	
 	/**
 	* @queue Name of the queue to consume
-	* @consumer A UDF or CFC to consume messages
-	* @method Name of method to call when 'consumer' argument is a CFC. Default is onMessage()
+	* @consumer A UDF or CFC method name (when component is specified) to be called for each message. 
+	* @error A UDF or CFC method name (when component is specified) to be called in case of an error in the consumer
+	* @component Name or instance of component containing "onMessage" and/or "onError" methods.  Don't use if passing closures for "consumer" and "error"
 	* @autoAcknowledge Automatically ackowledge each message as processed
 	* @prefetch Number of messages this consumer should fetch at once. 0 for unlimited
 	*/
 	function startConsumer(
 		required string queue,
-		any consumer,
-		string method='onMessage',
+		any consumer='onMessage',
+		any error='onError',
+		any component,
 		boolean autoAcknowledge=true,
 		numeric prefetch=1
 	) {
 		var args = arguments;
-		return batch( (channel)=>channel.startConsumer( argumentCollection=args ) );
+		return createChannel().startConsumer( argumentCollection=args );
 	}
 	
 }

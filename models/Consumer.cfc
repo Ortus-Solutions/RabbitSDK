@@ -14,11 +14,18 @@ component accessors="true"{
      * @channel RabbitMQ Connection Channel https://rabbitmq.github.io/rabbitmq-java-client/api/current/com/rabbitmq/client/Channel.html
      * @consumerTag The consumer tag associated with the consumer
      */
-    function init( required channel, required consumer,  required method, loadAppContext=true ){
+    function init(
+    	required channel,
+    	required consumer,
+    	required error,
+    	required component,
+    	loadAppContext=true
+    ){
         variables.channel       = arguments.channel;
         variables.consumerTag   = '';
         variables.consumer   	= consumer;
-        variables.method		= method;
+        variables.error			= error;
+        variables.component		= component;
 
 		variables.System          = createObject( "java", "java.lang.System" );
 		variables.Thread          = createObject( "java", "java.lang.Thread" );
@@ -99,14 +106,15 @@ component accessors="true"{
 				.populate( envelope, properties, body );
 			
 			// Consumer is a CFC instance
-			if( isObject( consumer ) ) {
-				cfinvoke( component=consumer, method=method, returnvariable="local.result"  ) {
+			if( isObject( component ) ) {
+				cfinvoke( component=component, method=consumer, returnvariable="local.result"  ) {
 					cfinvokeArgument( name='message', value=message );
+					cfinvokeArgument( name='channel', value=channel );
 					cfinvokeArgument( name='log', value=log );
 				}
 			// Consumer is a UDF
 			} else {
-				var result = consumer( message, log );	
+				var result = consumer( message, channel, log );
 			}
 			
 			// Ack/Nack by convention, returning boolean from UDF.
@@ -119,7 +127,18 @@ component accessors="true"{
 			}
 		} catch( any e ) {
 			try {
-				log.error( 'Error in RabbitMQ Consumer [#consumerTag#]', e.stacktrace );
+				if( isObject( component ) && structKeyExists( component, error ) ) {
+					cfinvoke( component=component, method=error, returnvariable="local.result"  ) {
+						cfinvokeArgument( name='message', value=message );
+						cfinvokeArgument( name='channel', value=channel );
+						cfinvokeArgument( name='log', value=log );
+						cfinvokeArgument( name='exception', value=e );
+					}
+				} else if( !isSimpleValue( error ) ) {
+					error(  message, channel, log, e );
+				} else {
+					log.error( 'Error in RabbitMQ Consumer [#consumerTag#]', e.stacktrace );	
+				}
 			} catch( any innerE ) {
 				err( e );
 				err( innerE );

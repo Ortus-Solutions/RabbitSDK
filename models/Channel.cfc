@@ -124,12 +124,7 @@ component accessors="true"  {
 			}
 			rethrow;
 		}
-		// This check is probably unecccessary since I don't any scenario where the call above doesn't error
-		// but returns some other queue name, but it seems like a good measure to take.
-		if( queue == DeclareOK.getQueue() ) {
-			return true;
-		}
-		return false;
+		return true;
 	}
 	
 	/**
@@ -204,7 +199,6 @@ component accessors="true"  {
 					break;
 				default:
 					throw( 'Unknown AMQP property [#k#]' );
-					break;
 			}
 		} );
 		
@@ -235,15 +229,17 @@ component accessors="true"  {
 	
 	/**
 	* @queue Name of the queue to consume
-	* @consumer A UDF or CFC to consume messages
-	* @method Name of method to call when 'consumer' argument is a CFC. Default is onMessage()
+	* @consumer A UDF or CFC method name (when component is specified) to be called for each message. 
+	* @error A UDF or CFC method name (when component is specified) to be called in case of an error in the consumer
+	* @component Name or instance of component containing "onMessage" and/or "onError" methods.  Don't use if passing closures for "consumer" and "error"
 	* @autoAcknowledge Automatically ackowledge each message as processed
 	* @prefetch Number of messages this consumer should fetch at once. 0 for unlimited
 	*/
 	function startConsumer(
 		required string queue,
-		any consumer,
-		string method='onMessage',
+		any consumer='onMessage',
+		any error='onError',
+		any component,
 		boolean autoAcknowledge=true,
 		numeric prefetch=1
 	) {
@@ -251,8 +247,32 @@ component accessors="true"  {
 			throw( 'This channel already has a running consumer. Please create a new channel or stop this channel''s consumer with stopConsumer().' );
 		}
 		
+		if( !isNull( arguments.component ) ){
+			if( !isSimpleValue( arguments.consumer ) || !isSimpleValue( arguments.error ) ) {
+				throw( 'When specifying component, "consumer" and "error" must be string names of methods in the component.' );	
+			}
+			if( isSimpleValue( arguments.component ) ) {
+				arguments.component = wirebox.getInstance( arguments.component );
+			}
+		} else {
+			arguments.component = '';
+			if( isSimpleValue( arguments.error ) ) {
+				// Default to a no-op
+				arguments.error = ()=>{};
+			}
+			if( isSimpleValue( arguments.consumer ) ) {
+				throw( 'When not specifying a component, "consumer" must be a UDF/closure' );
+			}
+		}
+		
+		
 		var consumer = createDynamicProxy(
-			wirebox.getInstance( name='consumer@rabbitsdk', initArguments={ channel : this, consumer : consumer, method : method } ),
+			wirebox.getInstance( name='consumer@rabbitsdk', initArguments={
+				 	channel : this,
+				 	consumer : consumer,
+				 	error : error,
+				 	component : component
+				 } ),
 			//[ javaloader.create( "com.rabbitmq.client.Consumer" ) ]
 			[ createObject( "java", "com.rabbitmq.client.Consumer" ) ]
 		);

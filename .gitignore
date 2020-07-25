@@ -19,3 +19,4 @@ test-harness/.env
 /lib/
 settings.xml
 /.env
+/test-harness/tests/results/coverageReport
