@@ -14,10 +14,11 @@ component accessors="true"{
      * @channel RabbitMQ Connection Channel https://rabbitmq.github.io/rabbitmq-java-client/api/current/com/rabbitmq/client/Channel.html
      * @consumerTag The consumer tag associated with the consumer
      */
-    function init( required channel, required udf, loadAppContext=true ){
+    function init( required channel, required consumer,  required method, loadAppContext=true ){
         variables.channel       = arguments.channel;
         variables.consumerTag   = '';
-        variables.udf   = udf;
+        variables.consumer   	= consumer;
+        variables.method		= method;
 
 		variables.System          = createObject( "java", "java.lang.System" );
 		variables.Thread          = createObject( "java", "java.lang.Thread" );
@@ -96,8 +97,17 @@ component accessors="true"{
 				.setChannel( channel.getChannel() )
 				.setConnection( channel.getConnection() )
 				.populate( envelope, properties, body );
-				
-			var result = udf( message, log );
+			
+			// Consumer is a CFC instance
+			if( isObject( consumer ) ) {
+				cfinvoke( component=consumer, method=method, returnvariable="local.result"  ) {
+					cfinvokeArgument( name='message', value=message );
+					cfinvokeArgument( name='log', value=log );
+				}
+			// Consumer is a UDF
+			} else {
+				var result = consumer( message, log );	
+			}
 			
 			// Ack/Nack by convention, returning boolean from UDF.
 			if( !isNull( local.result ) && isBoolean( local.result ) ) {

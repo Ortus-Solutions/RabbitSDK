@@ -235,22 +235,24 @@ component accessors="true"  {
 	
 	/**
 	* @queue Name of the queue to consume
+	* @consumer A UDF or CFC to consume messages
+	* @method Name of method to call when 'consumer' argument is a CFC. Default is onMessage()
 	* @autoAcknowledge Automatically ackowledge each message as processed
 	* @prefetch Number of messages this consumer should fetch at once. 0 for unlimited
 	*/
 	function startConsumer(
 		required string queue,
-		any udf,
+		any consumer,
+		string method='onMessage',
 		boolean autoAcknowledge=true,
-		numeric prefetch=1,
-		name=''
+		numeric prefetch=1
 	) {
 		if( getConsumerTag().len() ) {
 			throw( 'This channel already has a running consumer. Please create a new channel or stop this channel''s consumer with stopConsumer().' );
 		}
 		
 		var consumer = createDynamicProxy(
-			wirebox.getInstance( name='consumer@rabbitsdk', initArguments={ channel : this, udf : udf } ),
+			wirebox.getInstance( name='consumer@rabbitsdk', initArguments={ channel : this, consumer : consumer, method : method } ),
 			//[ javaloader.create( "com.rabbitmq.client.Consumer" ) ]
 			[ createObject( "java", "com.rabbitmq.client.Consumer" ) ]
 		);

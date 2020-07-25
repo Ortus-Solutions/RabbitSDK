@@ -113,7 +113,7 @@ map( 'ConsumerClient' ).to( 'rabbitsdk.models.RabbitClient' );
 wirebox.getInstance( 'ConsumerClient' )
 	.startConsumer( 
 		queue='myQueue',
-		udf=(message,log)=>{
+		consumer=(message,log)=>{
 			log.info( 'Message received: #message.getBody()#' );
 		} );
 		
@@ -212,8 +212,9 @@ var message = rabbitClient.getMessage( 'myQueue' );
 
 ### Start a consumer
 
-The recommended way to process messages is to start a consumer.  Each channel can have a single consumer started.  A consumer only needs to be started once.  The consumer will run until it is stopped, the channel is closed, or the client is shutdown.
-A consumer runs in a separate thread so starting the consumer is a non-blocking operation.  You pass a UDF/closure to the consumer which will be called once for every message that comes in.  
+The recommended way to process messages is to start a consumer.  Each channel can have a single consumer started.  A consumer only needs to be started once.  
+The consumer will run until it is stopped, the channel is closed, or the client is shutdown.
+A consumer runs in a separate thread so starting the consumer is a non-blocking operation.  You pass a UDF/closure or a CFC instance to the consumer which will be called once for every message that comes in.  
 
 ```js
 var channel = rabbitClient
@@ -224,9 +225,18 @@ var channel = rabbitClient
 				log.info( 'Consumer 1 Message received: #message.getBody()#' );
 				message.acknowledge();
 			} );
+			
+var channel = getRabbitClient()
+		.startConsumer( 
+			queue='myQueue',
+			autoAcknowledge=true,
+			consumer=new tests.resources.MyConsumer(),
+			method='onMessage'
+		);
+			
 ```
 
-The callback UDF receives two arguments:
+The callback method (whether a closure or in a CFC) receives two arguments:
 
 * **message** - An instance of the `Message` CFC outlined below
 * **log** - An instance of the LogBox logger from the consumer class, useful for debugging.

@@ -13,7 +13,7 @@ component{
         variables.artifactsDir  = cwd & "/.artifacts";
         variables.buildDir      = cwd & "/.tmp";
         variables.apiDocsURL    = "http://localhost:60299/apidocs/";
-        variables.testRunner    = "http://localhost:60299/tests/runner.cfm";
+        variables.testRunner    = "http://localhost:60299/test-harness/tests/runner.cfm";
 
         // Source Excludes Not Added to final binary
         variables.excludes      = [

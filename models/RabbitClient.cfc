@@ -281,29 +281,33 @@ component accessors=true singleton {
 	
 	/**
 	* @queue the name of the queue
-	* @autoAcknowledge true if the server should consider messages acknowledged once delivered; false if the server should expect explicit acknowledgements
 	*
 	* Get a single message from a queue.  If there are no messages in the queue, null will be returned.
 	*/
 	function getMessage(
-		required string queue,
-		boolean autoAcknowledge=true
+		required string queue
 	) {
+		if( !isNull( arguments.autoAcknowledge ) && !arguments.autoAcknowledge ) {
+			throw( 'autoAcknowledge cannot be set to false in this method.  Messages must be acknowledged on the same channel they were received.  Please create a channel and use its getMessage() method or use the rabbitClient.batch() method.' );
+		}
+		
 		var args = arguments;
-		return batch( (channel)=>channel.getMessage( argumentCollection=args ) );
+		return batch( (channel)=> channel.getMessage( argumentCollection=args ) );
 	}
 	
 	/**
 	* @queue Name of the queue to consume
+	* @consumer A UDF or CFC to consume messages
+	* @method Name of method to call when 'consumer' argument is a CFC. Default is onMessage()
 	* @autoAcknowledge Automatically ackowledge each message as processed
 	* @prefetch Number of messages this consumer should fetch at once. 0 for unlimited
 	*/
 	function startConsumer(
 		required string queue,
-		any udf,
+		any consumer,
+		string method='onMessage',
 		boolean autoAcknowledge=true,
-		numeric prefetch=1,
-		name=''
+		numeric prefetch=1
 	) {
 		var args = arguments;
 		return batch( (channel)=>channel.startConsumer( argumentCollection=args ) );

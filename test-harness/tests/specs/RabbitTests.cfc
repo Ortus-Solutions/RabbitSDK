@@ -282,12 +282,12 @@
 					channel.close();
 				});
 				
-				it( 'can start consumer thread', function(){
+				it( 'can start consumer thread with UDF', function(){
 					var channel1 = getRabbitClient().createChannel().queueDeclare( 'myQueue' )
 						.startConsumer( 
 							queue='myQueue',
 							autoAcknowledge=false,
-							udf=(message,log)=>{
+							consumer=(message,log)=>{
 								log.info( 'Consumer 1 Message received: #message.getBody()#' );
 								message.acknowledge();
 							} );
@@ -296,7 +296,7 @@
 						.startConsumer(
 							queue='myQueue',
 							autoAcknowledge=false,
-							udf=(message,log)=>{
+							consumer=(message,log)=>{
 								log.info( 'Consumer 2 Message received: #message.getBody()#' );
 								return true;
 							} );
@@ -318,6 +318,26 @@
 					channel2.close();
 				});
 				
+				it( 'can start consumer thread with component', function(){
+					var channel = getRabbitClient().createChannel().queueDeclare( 'myQueue' )
+						.startConsumer( 
+							queue='myQueue',
+							autoAcknowledge=true,
+							consumer=new tests.resources.MyConsumer() );
+							
+					channel
+						.publish( body='Message 1', routingKey='myQueue' )
+						.publish( body='Message 2', routingKey='myQueue' )
+						.publish( body='Message 3', routingKey='myQueue' );
+
+					sleep(250);
+					var count = channel.getQueueMessageCount( 'myQueue' );
+					
+					expect( count ).toBe( 0 );
+					
+					channel.close();
+				});
+				
 				it( 'can stop consumer thread', function(){
 					getRabbitClient().createChannel().queueDeclare( 'myQueue' )
 						.startConsumer( 'myQueue', ()=>{} )
@@ -336,7 +356,7 @@
 				});
 					
 			});
-			describe( 'channel-auto-closing cnveience methods', function(){
+			describe( 'channel-auto-closing conveience methods', function(){
 					
 				it( 'can create queue', function(){
 					getRabbitClient().queueDeclare( 'myQueue' );
@@ -378,6 +398,23 @@
 					expect( count1 ).toBe( 0 );
 					expect( count2 ).toBe( 1 );
 				});
+					
+				it( 'can get a single message', function(){
+					getRabbitClient()
+						.queueDeclare( 'myQueue' )
+						.publish( 'My Message', 'myQueue' );
+						
+					sleep( 250 );
+						
+					var message =  getRabbitClient().getMessage( queue='myQueue' );
+					
+					expect( isNull( message ) ).toBeFalse();
+				});
+					
+				it( 'Cannot use autoAcknowlege as false in this context', function(){
+					expect( ()=>getRabbitClient().getMessage( queue='myQueue', autoAcknowledge=false ) ).toThrow( regex='autoAcknowledge cannot be set to false in this method' );
+				});
+				
 			});
 		});
 	}
