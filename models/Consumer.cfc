@@ -122,7 +122,7 @@ component accessors="true"{
 				if( local.result ) {
 					message.acknowledge();
 				} else {
-					message.reject();						
+					message.reject();
 				}
 			}
 		} catch( any e ) {
@@ -137,7 +137,7 @@ component accessors="true"{
 				} else if( !isSimpleValue( error ) ) {
 					error(  message, channel, log, e );
 				} else {
-					log.error( 'Error in RabbitMQ Consumer [#consumerTag#]', e.stacktrace );	
+					log.error( 'Error in RabbitMQ Consumer [#consumerTag#]', e.stacktrace );
 				}
 			} catch( any innerE ) {
 				err( e );

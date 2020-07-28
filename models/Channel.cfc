@@ -40,7 +40,7 @@ component accessors="true"  {
 	*/
 	function queueDeclare(
 		required string name,
-		boolean durable=false,
+		boolean durable=true,
 		boolean exclusive=false,
 		boolean autoDelete=false,
 		struct queueArguments={}
@@ -294,7 +294,7 @@ component accessors="true"  {
 		getChannel().basicCancel( getConsumerTag() );
 		setConsumerTag( '' );
 		
-		return this;		
+		return this;
 	}
 	
 	/**

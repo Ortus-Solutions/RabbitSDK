@@ -31,7 +31,7 @@
 
 	// executes after all suites+specs in the run() method
 	function afterAll(){
-	//	getRabbitClient().shutdown();
+		getRabbitClient().shutdown();
 		super.afterAll();
 	}
 
@@ -250,6 +250,24 @@
 					expect( isNull( message.getHeader( 'does not exist' ) ) ).toBeTrue();
 		
 				});
+					
+				// This requires a plugin and a dedicated queue type, but I haven't quite figured out how to make it work yet.
+				xit( 'can publish future message', function(){
+					getRabbitClient().queueDeclare( 'myQueue' ).queuePurge( 'myQueue' ).publish(
+						body='My Future Message',
+						props={
+							'headers' : {
+								'x-delay' : 20000
+							}
+						},
+						exchange='delayed',
+						routingKey='myQueue'
+					);
+					sleep( 250 );
+					var message = getRabbitClient().getMessage( 'myQueue' );
+					dump(message?:{});
+				});
+	
 					
 				it( 'can consume a single message with no props', function(){
 					var channel = getRabbitClient()
@@ -528,7 +546,7 @@
 							);
 						
 						loop from=1 to=5000 index="i" {
-							channel1.publish( body='Message #i#', routingKey='myQueue' );	
+							channel1.publish( body='Message #i#', routingKey='myQueue' );
 						}
 	
 						sleep( 500 );

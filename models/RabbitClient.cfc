@@ -97,6 +97,9 @@ component accessors=true singleton {
 			if( val( thisPort ) != 0 ) {
 				factory.setPort( thisPort );	
 			}			
+			
+			factory.setConnectionTimeout( 5000 );
+			
 			setConnection( factory.newConnection() );
 			
 		}
@@ -180,7 +183,7 @@ component accessors=true singleton {
 	*/
 	function queueDeclare(
 		required string name,
-		boolean durable=false,
+		boolean durable=true,
 		boolean exclusive=false,
 		boolean autoDelete=false,
 		struct queueArguments={}
