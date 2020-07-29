@@ -121,7 +121,7 @@
 					var exists1 = channel.queueExists( 'myQueue' );
 					channel.queueDelete( 'myQueue' );
 					var exists2 = channel.queueExists( 'myQueue' );
-					var channel.close();
+					channel.close();
 					expect( exists1 ).toBeBoolean();
 					expect( exists1 ).toBeTrue();
 					expect( exists2 ).toBeFalse();
@@ -395,7 +395,7 @@
 				it( 'can call component onError method', function(){
 					application.consumerOnErrorFired=false;
 					var myComponent = new tests.resources.MyConsumer();
-					myComponent.onMessage = ()=>throw( 'I don''t like this message!' );
+					myComponent.onMessage = ()=>{throw( 'I don''t like this message!' )}
 					var channel = getRabbitClient()
 						.queueDeclare( 'myQueue' )
 						.queuePurge( 'myQueue' )
@@ -545,7 +545,7 @@
 								}
 							);
 						
-						loop from=1 to=5000 index="i" {
+						cfloop( from=1, to=5000, index="i" ){
 							channel1.publish( body='Message #i#', routingKey='myQueue' );
 						}
 	

@@ -1,4 +1,7 @@
 {
+    "app":{
+        "cfengine":"lucee"
+    },
     "web":{
         "http":{
             "port":"60299"

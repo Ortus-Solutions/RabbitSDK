@@ -115,11 +115,14 @@ component accessors="true"  {
 	boolean function queueExists( required string queue ) {
 		try {
 			var DeclareOk = getChannel().queueDeclarePassive( queue );
-		} catch( any var e ) {
+		} catch( any e ) {
 			// Any error on a channel closes it, so create a fresh channel to keep working with
 			setChannel( getConnection().createChannel() );
-			// TODO: getPageException() is likely Lucee specific. Check for Adobe equivalent
-			if( e.getPageException().getRootCause().getMessage() contains 'reply-code=404' ) {
+			if( server.keyExists( 'lucee' ) && e.getPageException().getRootCause().getMessage() contains 'reply-code=404' ) {
+				return false;
+			}
+			var root = e.rootcause ?: e.cause ?: e;			
+			if( root.message contains 'reply-code=404' ) {
 				return false;
 			}
 			rethrow;
@@ -147,6 +150,10 @@ component accessors="true"  {
 			body = serializeJSON( body );
 			props.headers = props.headers ?: {};
 			props.headers[ '_autoJSON' ] = true;
+		}
+		
+		if( props.keyExists( 'headers' ) ) {
+			props.headers = props.headers.map( (k,v)=>toString( v ) );
 		}
 		
 		props.each( (k,v) => {
@@ -266,7 +273,7 @@ component accessors="true"  {
 		}
 		
 		
-		var consumer = createDynamicProxy(
+		var consumerProxy = createDynamicProxy(
 			wirebox.getInstance( name='consumer@rabbitsdk', initArguments={
 				 	channel : this,
 				 	consumer : consumer,
@@ -274,11 +281,13 @@ component accessors="true"  {
 				 	component : component
 				 } ),
 			//[ javaloader.create( "com.rabbitmq.client.Consumer" ) ]
-			[ createObject( "java", "com.rabbitmq.client.Consumer" ) ]
+			// Adobe doesn't support this
+			//[ createObject( "java", "com.rabbitmq.client.Consumer" ) ]
+			[ "com.rabbitmq.client.Consumer" ]
 		);
 		
 		getChannel().basicQos( prefetch );
-		setConsumerTag( getChannel().basicConsume( queue, autoAcknowledge, consumer ) );
+		setConsumerTag( getChannel().basicConsume( queue, autoAcknowledge, consumerProxy ) );
 		return this;		
 	}
 	

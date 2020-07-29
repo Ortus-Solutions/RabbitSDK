@@ -65,7 +65,8 @@ component accessors='true'  {
 		setUserId( properties.getUserId() ?: '' );
 		
 		// Force this to be a native CFML Struct instead of Map<String,Object>
-		setHeaders( {}.append( getHeaders().map( (k,v)=>v.toString() ) ) );
+		var emptyStruct = {};
+		setHeaders( emptyStruct.append( getHeaders().map( (k,v)=>v.toString() ) ) );
 		
 		// If we got a complex object in, send it out the same way
 		if( getHeader( '_autoJSON', false ) ) {
@@ -83,7 +84,7 @@ component accessors='true'  {
 	*/
 	function getHeader( required string name, any defaultValue ){
 		var headers = getHeaders();
-		if( isNull( headers[ name ] ) ) {
+		if( !headers.keyExists( name ) ) {
 			if( isNull( defaultvalue ) ) {
 				return;
 			} else {

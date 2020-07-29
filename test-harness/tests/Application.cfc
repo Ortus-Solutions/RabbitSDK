@@ -29,9 +29,9 @@ component{
 	moduleRootPath = REReplaceNoCase( this.mappings[ "/root" ], "#request.module_name#(\\|/)test-harness(\\|/)", "" );
 	this.mappings[ "/moduleroot" ] = moduleRootPath;
 	this.mappings[ "/#request.MODULE_NAME#" ] = moduleRootPath & "#request.MODULE_NAME#";
-
+	
 	this.javaSettings = {
-		loadPaths = directorylist( expandPath( moduleRootPath & '#request.MODULE_NAME#/lib' ), true, 'array', '*jar' ),
+		loadPaths = directorylist( moduleRootPath & '#request.MODULE_NAME#/lib', true, 'array', '*jar' ),
 		loadColdFusionClassPath = true,
 		reloadOnChange = false
 	};
