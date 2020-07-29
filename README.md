@@ -21,8 +21,9 @@ Apache License, Version 2.0.
 ## SYSTEM REQUIREMENTS
 
 - Lucee 5
+- Adobe 2018
 
-Help supporting Adobe CF is welcomed.  It may work, I just haven't tested it yet.
+Previous Adobe versions may work, I just haven't tested them yet.
 
 ## Installation
 
