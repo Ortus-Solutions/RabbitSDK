@@ -1,7 +1,7 @@
 {
     "name":"RabbitSDK",
     "author":"Brad Wood <brad@ortussolutions.com>",
-    "version":"1.0.1",
+    "version":"1.0.2",
     "location":"https://downloads.ortussolutions.com/ortussolutions/rabbitsdk/@build.version@/rabbitsdk-@build.version@.zip",
     "slug":"rabbitsdk",
     "type":"modules",
