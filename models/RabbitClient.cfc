@@ -10,10 +10,10 @@
 component accessors=true singleton {
 	
 	// DI
-	property name="settings" inject="coldbox:moduleSettings:rabbitsdk";
+	property name="settings" inject="box:moduleSettings:rabbitsdk";
 	property name="wirebox" inject="wirebox";
-	property name="moduleConfig" inject="coldbox:moduleConfig:rabbitsdk";
-	property name="controller" inject="coldbox";
+	property name="moduleConfig" inject="box:moduleConfig:rabbitsdk";
+	property name="interceptorService" inject="box:InterceptorService";
 //	property name="javaloader" inject="loader@cbjavaloader";
 	property name="log" inject="logbox:logger:{this}";
 	
@@ -31,7 +31,8 @@ component accessors=true singleton {
 	}
 	
 	function onDIComplete(){
-		controller.getInterceptorService().registerInterceptor( 
+		interceptorService.registerInterceptor( 
+			interceptor 	= this, 
 			interceptorObject 	= this,
 			interceptorName 	= "rabbitsdk-client-#getClientID()#"
 		);
@@ -146,6 +147,14 @@ component accessors=true singleton {
 	}
 
 	/**
+	 * Listen to the CommandBox CLI shutting down
+	 */
+	function onCLIExit() {
+		log.debug( 'CLI shutdown detected.' );
+		shutdown();
+	}
+
+	/**
 	 * Call this when the app shuts down or reinits.
 	 * This is very important so that orphaned connections are not left in memory
 	 */
@@ -156,7 +165,7 @@ component accessors=true singleton {
 				getConnection().close();
 				structDelete( variables, 'connection' );
 			}
-			controller.getInterceptorService().unregister( "rabbitsdk-client-#getClientID()#" );
+			interceptorService.unregister( "rabbitsdk-client-#getClientID()#" );
 		}
 	}
 

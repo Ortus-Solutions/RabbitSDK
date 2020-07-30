@@ -264,10 +264,6 @@ component accessors="true"  {
 			}
 		} else {
 			arguments.component = '';
-			if( isSimpleValue( arguments.error ) ) {
-				// Default to a no-op
-				arguments.error = ()=>{};
-			}
 			if( isSimpleValue( arguments.consumer ) ) {
 				throw( 'When not specifying a component, "consumer" must be a UDF/closure' );
 			}

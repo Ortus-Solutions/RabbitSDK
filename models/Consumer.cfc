@@ -141,7 +141,7 @@ component accessors="true"{
 					error(  message, channel, log, e );
 				} else {
 					message.reject();
-					log.error( 'Error in RabbitMQ Consumer [#consumerTag#]', e.stacktrace );
+					log.error( 'Error in RabbitMQ Consumer [#consumerTag#]. #e.message# #e.detail#', e.stacktrace );
 				}
 			} catch( any innerE ) {
 				err( e );
@@ -166,6 +166,9 @@ component accessors="true"{
 		loadContext();
 		try {
 	        log.info( 'Shutdown signal received by RabbitMQ Consumer [#consumerTag#]' );
+	        if( not sig contains 'reply-code=200' ) {
+	        	log.info( sig );	
+	        }
 		} catch( any e ) {
 			err( e );
 		} finally {
