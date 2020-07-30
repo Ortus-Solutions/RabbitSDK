@@ -54,7 +54,7 @@ component{
         required projectName,
         version="1.0.0",
         buildID=createUUID(),
-        branch="development"
+        branch="refs/heads/development"
     ){
 
         // Run the tests
@@ -106,9 +106,9 @@ component{
         required projectName,
         version="1.0.0",
         buildID=createUUID(),
-        branch="development"
+        branch="refs/heads/development"
     ){
-        var fullVersion = version & ( arguments.branch == "master" ? '' : "-snapshot" );
+        var fullVersion = version & ( arguments.branch == "refs/heads/master" ? '' : "-snapshot" );
         
         // Build Notice ID
         print.line()
@@ -144,8 +144,8 @@ component{
         command( 'tokenReplace' )
             .params(
                 path = "/#variables.projectBuildDir#/**",
-                token = ( arguments.branch == "master" ? "@build.number@" : "+@build.number@" ),
-                replacement = ( arguments.branch == "master" ? arguments.buildID : "-snapshot" )
+                token = ( arguments.branch == "refs/heads/master" ? "@build.number@" : "+@build.number@" ),
+                replacement = ( arguments.branch == "refs/heads/master" ? arguments.buildID : "-snapshot" )
             )
             .run();
 
@@ -168,7 +168,7 @@ component{
      * Produce the API Docs
      */
     function docs( required projectName, version="1.0.0", outputDir=".tmp/apidocs" ){
-        var fullVersion = version & ( arguments.branch == "master" ? '' : "-snapshot" );
+        var fullVersion = version & ( arguments.branch == "refs/heads/master" ? '' : "-snapshot" );
 
         // Generate Docs
         print.greenLine( "Generating API Docs, please wait..." ).toConsole();
