@@ -19,6 +19,7 @@ component accessors="true"{
     	required consumer,
     	required error,
     	required component,
+    	required autoAcknowledge,
     	loadAppContext=true
     ){
         variables.channel       = arguments.channel;
@@ -26,6 +27,7 @@ component accessors="true"{
         variables.consumer   	= consumer;
         variables.error			= error;
         variables.component		= component;
+        variables.autoAcknowledge		= autoAcknowledge;
 
 		variables.System          = createObject( "java", "java.lang.System" );
 		variables.Thread          = createObject( "java", "java.lang.Thread" );
@@ -103,6 +105,7 @@ component accessors="true"{
 			var message = wirebox.getInstance( 'message@rabbitsdk' )
 				.setChannel( channel.getChannel() )
 				.setConnection( channel.getConnection() )
+				.setAcknowledged( autoAcknowledge )
 				.populate( envelope, properties, body );
 			
 			// Consumer is a CFC instance
@@ -137,6 +140,7 @@ component accessors="true"{
 				} else if( !isSimpleValue( error ) ) {
 					error(  message, channel, log, e );
 				} else {
+					message.reject();
 					log.error( 'Error in RabbitMQ Consumer [#consumerTag#]', e.stacktrace );
 				}
 			} catch( any innerE ) {
