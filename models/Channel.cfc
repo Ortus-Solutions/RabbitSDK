@@ -231,6 +231,7 @@ component accessors="true"  {
 		return wirebox.getInstance( 'message@rabbitsdk' )
 			.setChannel( getChannel() )
 			.setConnection( getConnection() )
+			.setAcknowledged( autoAcknowledge )
 			.populate( response.getEnvelope(), response.getProps(), response.getBody() );
 	}
 	
@@ -278,7 +279,8 @@ component accessors="true"  {
 				 	channel : this,
 				 	consumer : consumer,
 				 	error : error,
-				 	component : component
+				 	component : component,
+				 	autoAcknowledge : autoAcknowledge
 				 } ),
 			//[ javaloader.create( "com.rabbitmq.client.Consumer" ) ]
 			// Adobe doesn't support this

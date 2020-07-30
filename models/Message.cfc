@@ -9,6 +9,8 @@ component accessors='true'  {
 	property name='channel' type='any';
 		
 	property name='rawEnvelope' type='any';
+	property name='acknowledged' type='boolean' default='false';
+	property name='rejected' type='boolean' default='false';
 	property name='rawProperties' type='any';
 	property name='rawBody' type='any';
 	
@@ -98,6 +100,10 @@ component accessors='true'  {
 	* Acknowledge this message as processed.  Only neccessary if autoAck is off
 	*/
 	function acknowledge(){
+		if( isCommitted() ) {
+			return this;
+		}
+		setAcknowledged( true );
 		getChannel().basicAck( getDeliveryTag(), false );
 		return this;
 	}
@@ -107,9 +113,34 @@ component accessors='true'  {
 	*
 	* Reject this message as processed.  Only neccessary if autoAck is off
 	*/
-	function reject( boolean requeue=false ){
+	function reject( boolean requeue=true ){
+		if( isCommitted() ) {
+			return this;
+		}
+		setRejected( true );
 		getChannel().basicReject( getDeliveryTag(), requeue );
 		return this;
+	}
+	
+	/**
+	* Has this message been previously acknowledged?
+	*/
+	boolean function isAcknowledged() {
+		return getAcknowledged() == true;
+	}
+	
+	/**
+	* Has this message been previously rejected?
+	*/
+	boolean function isRejected() {
+		return getRejected() == true;
+	}
+	
+	/**
+	* Has this message been previously acknowledged or rejected?
+	*/	
+	boolean function isCommitted() {
+		return isAcknowledged() || isRejected();
 	}
 	
 }
