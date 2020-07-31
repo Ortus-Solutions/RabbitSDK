@@ -113,7 +113,7 @@ component accessors='true'  {
 	*
 	* Reject this message as processed.  Only neccessary if autoAck is off
 	*/
-	function reject( boolean requeue=true ){
+	function reject( boolean requeue=false ){
 		if( isCommitted() ) {
 			return this;
 		}
