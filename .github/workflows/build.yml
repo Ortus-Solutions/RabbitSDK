@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MODULE_ID: rabbitsdk
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     
     services:
       rabbitmq:
