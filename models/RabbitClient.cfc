@@ -7,7 +7,7 @@
 * Only create me once and ask me to create channels for every new thread that wants to interact with the server.
 * ALWAYS make sure you call the shutdown() method when you're done using or you'll leave orphaned connections open.
 */
-component accessors=true singleton {
+component accessors=true singleton ThreadSafe {
 	
 	// DI
 	property name="settings" inject="box:moduleSettings:rabbitsdk";
