@@ -141,7 +141,7 @@ component accessors="true"{
 					error(  message, channel, log, e );
 				} else {
 					message.reject();
-					log.error( 'Error in RabbitMQ Consumer [#consumerTag#]. #e.message# #e.detail#', e.stacktrace );
+					log.error( '#e.message# #e.detail#', e.stacktrace );
 				}
 			} catch( any innerE ) {
 				err( e );

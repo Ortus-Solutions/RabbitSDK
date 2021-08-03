@@ -31,6 +31,7 @@ component accessors=true singleton {
 	}
 	
 	function onDIComplete(){
+		log.debug( 'Rabbit client intialized. ClientID: #getClientID()#' );
 		interceptorService.registerInterceptor( 
 			interceptor 	= this, 
 			interceptorObject 	= this,
