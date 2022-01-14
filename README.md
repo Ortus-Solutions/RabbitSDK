@@ -107,7 +107,7 @@ rabbitClient.connect( host='localhost', port=5672, username='guest', password='g
 Or, for SSL-enabled connections:
 
 ```js
-rabbitClient.connect( host='localhost', port=5672, username='guest', password='guest', virtualHost='/', useSSL = true, sslProtocol = 'TLSV1.2');
+rabbitClient.connect( host='localhost', port=5671, username='guest', password='guest', virtualHost='/', useSSL = true, sslProtocol = 'TLSV1.2');
 ```
 
 In ColdBox, the RabbitClient will register a `prereinit` interceptor listener to shut itself down when the framework reinits.  If you have another scenario such as a test case suite that simply clears the application scope 
