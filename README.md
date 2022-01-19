@@ -92,7 +92,8 @@ moduleSettings = {
 		username : getSystemSetting( 'rabbit_username' ),
 		password : getSystemSetting( 'rabbit_password' ),
 		virtualHost : getSystemSetting( 'rabbit_virtualHost' ),
-		useSSL : getSystemSetting( 'rabbit_useSSL' )
+		useSSL : getSystemSetting( 'rabbit_useSSL' ),
+		sslProtocol : getSystemSetting( 'rabbit_sslProtocol' )
 	}
 };
 ```
@@ -100,8 +101,14 @@ moduleSettings = {
 You can also manually create your connection, which only needs to happen once:
 
 ```js
-rabbitClient.connect( host='localhost', port=5672, username='guest', password='guest', virtualHost='/', useSSL=true );
+rabbitClient.connect( host='localhost', port=5672, username='guest', password='guest', virtualHost='/');
 ```   
+
+Or, for SSL-enabled connections:
+
+```js
+rabbitClient.connect( host='localhost', port=5671, username='guest', password='guest', virtualHost='/', useSSL = true, sslProtocol = 'TLSV1.2');
+```
 
 In ColdBox, the RabbitClient will register a `prereinit` interceptor listener to shut itself down when the framework reinits.  If you have another scenario such as a test case suite that simply clears the application scope 
 when it's finished, it will leave hanging connections which you can see in the web-based management UI.
