@@ -50,7 +50,7 @@ component accessors=true singleton ThreadSafe {
 	 * connection details have been provided in the module settings.
 	 * This RabbitClient wraps a single, persisted conenction to RabbitMQ.
 	 */
-	function connect( string host, string port, string username, string password, string virtualHost, boolean useSSL, boolean quiet=false ){
+	function connect( string host, string port, string username, string password, string virtualHost, boolean useSSL, boolean quiet=false, string sslProtocol = 'TLSV1.2' ){
 		
 		if( hasConnection() ) {
 			if( quiet ) {
@@ -88,7 +88,7 @@ component accessors=true singleton ThreadSafe {
 			factory.setPassword( thisPassword );
 			
 			if( isBoolean( thisUseSSL ) ) {
-				factory.useSslProtocol( thisUseSSL );	
+				factory.useSslProtocol( arguments.sslProtocol );	
 			}
 			
 			if( len( thisVirtualHost ) ) {
