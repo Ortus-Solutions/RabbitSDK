@@ -11,7 +11,7 @@
         "testbox":"^4.5.0+5"
     },
     "installPaths":{
-        "coldbox":"coldbox/",
-        "testbox":"testbox/"
+        "testbox":"testbox/",
+        "coldbox":"coldbox/"
     }
 }

@@ -45,6 +45,8 @@ component{
 	// Module Root + Path Mappings
 	this.mappings[ "/moduleroot" ] = moduleRootPath;
 	this.mappings[ "/#request.MODULE_NAME#" ] = modulePath;
+	this.mappings[ "/coldbox" ] = COLDBOX_APP_ROOT_PATH & "/coldbox";
+	
 	
 	// application start
 	public boolean function onApplicationStart(){
