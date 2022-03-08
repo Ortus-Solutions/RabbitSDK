@@ -183,6 +183,94 @@ component accessors=true singleton ThreadSafe {
 	
 	
 	/**
+	* @name the name of the exchange
+	* @type Type of exchange.  Valid values are direct, fanout, headers, and topic
+	* @durable true if we are declaring a durable exchange (the exchange will survive a server restart)
+	* @autoDelete true if the server should delete the exchange when it is no longer in use
+	* @internal true if the exchange is internal, i.e. can't be directly published to by a client.
+	* @queueArguments  Struct of other properties (construction arguments) for the exchange
+	* 
+	* Declare a new exchange.
+	*/
+	function exchangeDeclare(
+		required string name,
+		string type='direct',
+		boolean durable=true,
+		boolean autoDelete=false,
+		boolean internal=false,
+		struct exchangeArguments={}
+	) {
+		var args = arguments;
+		batch( (channel)=>channel.exchangeDeclare( argumentCollection=args ) );
+		return this;
+	}
+
+	/**
+	* @name the name of the exchange
+	* @ifUnused true to indicate that the exchange is only to be deleted if it is unused
+	* 
+	* delete an exchange.
+	*/
+	function exchangeDelete(
+		required string name,
+		boolean ifUnused=false
+	) {	
+		var args = arguments;
+		batch( (channel)=>channel.exchangeDelete( argumentCollection=args ) );
+		return this;
+	}
+
+	/**
+	* @destination The name of the exchange to which messages flow across the binding
+	* @source The name of the exchange from which messages flow across the binding
+	* @routingKey The routing key to use for the binding
+	* @bindArguments A struct of other properties (binding parameters)
+	* 
+	* Bind an exchange to an exchange.
+	*/
+	function exchangeBind(
+		required string destination,
+		required string source,
+		required string routingKey,
+		struct bindArguments={}
+	) {	
+		var args = arguments;
+		batch( (channel)=>channel.exchangeBind( argumentCollection=args ) );
+		return this;
+	}
+
+	/**
+	* @destination The name of the exchange to which messages flow across the binding
+	* @source The name of the exchange from which messages flow across the binding
+	* @routingKey The routing key to use for the binding
+	* @bindArguments A struct of other properties (binding parameters)
+	* 
+	* Unbind an exchange from an exchange.
+	*/
+	function exchangeUnbind(
+		required string destination,
+		required string source,
+		required string routingKey,
+		struct bindArguments={}
+	) {	
+		var args = arguments;
+		batch( (channel)=>channel.exchangeUnbind( argumentCollection=args ) );
+		return this;
+	}
+	
+	/**
+	* @name the name of the exchange
+	* 
+	* Returns true if exchange exists, false if it doesn't.  Be careful calling this method under load as it 
+	* catches a thrown exception if the exchange doesn't exist so it probably doesn't perform great if the exchange you
+	* are checking doesn't exist most of the time.
+	*/
+	boolean function exchangeExists( required string name ) {
+		var args = arguments;
+		return batch( (channel)=>channel.exchangeExists( argumentCollection=args ) );
+	}
+	
+	/**
 	* @name the name of the queue
 	* @durable true if we are declaring a durable queue (the queue will survive a server restart)
 	* @exclusive true if we are declaring an exclusive queue (restricted to this connection)
@@ -236,6 +324,25 @@ component accessors=true singleton ThreadSafe {
 	) {
 		var args = arguments;
 		batch( (channel)=>channel.queueBind( argumentCollection=args ) );
+		return this;
+	}
+	
+	/**
+	* @queue the name of the queue
+	* @exchange the name of the exchange
+	* @routingKey the routing key to use for the binding
+	* @bindArguments Struct of other properties (binding parameters)
+	* 
+	* Unbind a queue from an exchange.
+	*/
+	function queueUnbind(
+		required string queue,
+		required string exchange,
+		required string routingKey,
+		struct bindArguments={}
+	) {
+		var args = arguments;
+		batch( (channel)=>channel.queueUnbind( argumentCollection=args ) );
 		return this;
 	}
 	
