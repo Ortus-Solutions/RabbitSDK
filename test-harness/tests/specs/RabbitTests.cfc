@@ -98,6 +98,51 @@
 				
 			});
 
+			describe( 'Exchange management', function(){
+					
+				it( 'can create exchange', function(){
+					getRabbitClient().createChannel().exchangeDeclare( 'myExchange' ).close();
+				});
+	
+				it( 'can bind exchange', function(){
+					getRabbitClient().createChannel().exchangeDeclare( 'myExchange' ).exchangeBind( 'amq.direct', 'myExchange', 'routing.key' ).close();
+				});
+	
+				it( 'can delete exchange', function(){
+					getRabbitClient().createChannel().exchangeDeclare( 'myExchange' ).exchangeDelete( 'myExchange' ).close();
+				});
+	
+	
+				it( 'can check if exchange exists', function(){
+					var channel = getRabbitClient().createChannel().exchangeDeclare( 'myExchange' );
+					var exists1 = channel.exchangeExists( 'myExchange' );
+					channel.exchangeDelete( 'myExchange' );
+					var exists2 = channel.exchangeExists( 'myExchange' );
+					channel.close();
+					expect( exists1 ).toBeBoolean();
+					expect( exists1 ).toBeTrue();
+					expect( exists2 ).toBeFalse();
+					
+				});
+	
+				it( 'can rethrow error not related to exchange checking', function(){
+					var channel = getRabbitClient().createChannel();
+					// Force an internal error
+					channel.setChannel( '' )
+					expect( ()=>channel.exchangeExists( 'myExchange' ) ).toThrow();
+				});
+
+				it( 'can unbind exchange', function(){
+					getRabbitClient()
+						.createChannel()
+						.exchangeDeclare( 'myExchange' )
+						.exchangeBind( 'amq.direct', 'myExchange', 'routing.key' )
+						.exchangeUnbind( 'amq.direct', 'myExchange', 'routing.key' )
+						.close();
+				});
+
+			});
+
 			describe( 'Queue management', function(){
 					
 				it( 'can create queue', function(){
@@ -147,6 +192,15 @@
 					// Force an internal error
 					channel.setChannel( '' )
 					expect( ()=>channel.queueExists( 'myQueue' ) ).toThrow();
+				});
+
+				it( 'can unbind queue', function(){
+					getRabbitClient()
+						.createChannel()
+						.queueDeclare( 'myQueue' )
+						.queueBind( 'myQueue', 'amq.direct', 'routing.key' )
+						.queueUnbind( 'myQueue', 'amq.direct', 'routing.key' )
+						.close();
 				});
 
 			});
@@ -252,20 +306,41 @@
 				});
 					
 				// This requires a plugin and a dedicated queue type, but I haven't quite figured out how to make it work yet.
-				xit( 'can publish future message', function(){
-					getRabbitClient().queueDeclare( 'myQueue' ).queuePurge( 'myQueue' ).publish(
-						body='My Future Message',
-						props={
-							'headers' : {
-								'x-delay' : 20000
+				it( 'can publish future message', function(){
+					getRabbitClient()
+						.exchangeDelete( 'delayed' )
+						.exchangeDeclare(
+							name='delayed',
+							type='x-delayed-message',
+							exchangeArguments={
+								'x-delayed-type' : 'direct'
 							}
-						},
-						exchange='delayed',
-						routingKey='myQueue'
-					);
-					sleep( 250 );
+						)
+						.queueDeclare( 'myQueue' )
+						.queueBind( 'myQueue', 'delayed', 'myQueue' )
+						.queuePurge( 'myQueue' )
+						.publish(
+							body='My Future Message',
+							props={
+								'headers' : {
+									'x-delay' : 2000
+								}
+							},
+							exchange='delayed',
+							routingKey='myQueue'
+						);
+						
+					// Message won't be delivered yet (returns null)
 					var message = getRabbitClient().getMessage( 'myQueue' );
-					dump(message?:{});
+					expect( isNull( message ) ).toBeTrue();
+					
+					// Wait 2.5 second for the message to deliver
+					sleep( 2500 );
+					
+					// NOW we should get it
+					var message = getRabbitClient().getMessage( 'myQueue' );
+					expect( isNull( message ) ).toBeFalse();
+					expect( message.getBody() ).toBe( 'My Future Message' );
 				});
 	
 					

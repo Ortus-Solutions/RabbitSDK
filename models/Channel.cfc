@@ -15,6 +15,7 @@ component accessors="true"  {
 	property name="channel" type="any";
 	property name="messagePropertiesBuilder" type="any";
 	property name="javaUtilDate" type="any";
+	property name="javaExchangeType" type="any";	
 	property name="consumerTag" type="string" default="";
 	
 	/**
@@ -25,8 +26,106 @@ component accessors="true"  {
 		setChannel( getConnection().createChannel() );
 		//setMessagePropertiesBuilder( javaloader.create( "com.rabbitmq.client.AMQP$BasicProperties$Builder" ) );
 		setMessagePropertiesBuilder( createObject( "java", "com.rabbitmq.client.AMQP$BasicProperties$Builder" ) );
+		setJavaExchangeType( createObject( "java", "com.rabbitmq.client.BuiltinExchangeType" ) );
 		setJavaUtilDate( createObject( 'java', 'java.util.Date' ) );
 		return this;
+	}
+	
+	/**
+	* @name the name of the exchange
+	* @type Type of exchange.  Valid values are direct, fanout, headers, and topic
+	* @durable true if we are declaring a durable exchange (the exchange will survive a server restart)
+	* @autoDelete true if the server should delete the exchange when it is no longer in use
+	* @internal true if the exchange is internal, i.e. can't be directly published to by a client.
+	* @queueArguments  Struct of other properties (construction arguments) for the exchange
+	* 
+	* Declare a new exchange.
+	*/
+	function exchangeDeclare(
+		required string name,
+		string type='direct',
+		boolean durable=true,
+		boolean autoDelete=false,
+		boolean internal=false,
+		struct exchangeArguments={}
+	) {
+		getChannel().exchangeDeclare( name, type, durable, autoDelete, internal, exchangeArguments );
+		return this;
+	}
+
+	/**
+	* @destination The name of the exchange to which messages flow across the binding
+	* @source The name of the exchange from which messages flow across the binding
+	* @routingKey The routing key to use for the binding
+	* @bindArguments A struct of other properties (binding parameters)
+	* 
+	* Bind an exchange to an exchange.
+	*/
+	function exchangeBind(
+		required string destination,
+		required string source,
+		required string routingKey,
+		struct bindArguments={}
+	) {	
+		getChannel().exchangeBind( destination, source, routingKey, bindArguments );
+		return this;
+	}
+
+	/**
+	* @destination The name of the exchange to which messages flow across the binding
+	* @source The name of the exchange from which messages flow across the binding
+	* @routingKey The routing key to use for the binding
+	* @bindArguments A struct of other properties (binding parameters)
+	* 
+	* Unbind an exchange from an exchange.
+	*/
+	function exchangeUnbind(
+		required string destination,
+		required string source,
+		required string routingKey,
+		struct bindArguments={}
+	) {	
+		getChannel().exchangeUnbind( destination, source, routingKey, bindArguments );
+		return this;
+	}
+
+	/**
+	* @name the name of the exchange
+	* @ifUnused true to indicate that the exchange is only to be deleted if it is unused
+	* 
+	* delete an exchange.
+	*/
+	function exchangeDelete(
+		required string name,
+		boolean ifUnused=false
+	) {	
+		getChannel().exchangeDelete( name, ifUnused );
+		return this;
+	}
+	
+	/**
+	* @name the name of the exchange
+	* 
+	* Returns true if exchange exists, false if it doesn't.  Be careful calling this method under load as it 
+	* catches a thrown exception if the exchange doesn't exist so it probably doesn't perform great if the exchange you
+	* are checking doesn't exist most of the time.
+	*/
+	boolean function exchangeExists( required string name ) {
+		try {
+			var DeclareOk = getChannel().exchangeDeclarePassive( name );
+		} catch( any e ) {
+			// Any error on a channel closes it, so create a fresh channel to keep working with
+			setChannel( getConnection().createChannel() );
+			if( server.keyExists( 'lucee' ) && e.getPageException().getRootCause().getMessage() contains 'reply-code=404' ) {
+				return false;
+			}
+			var root = e.rootcause ?: e.cause ?: e;			
+			if( root.message contains 'reply-code=404' ) {
+				return false;
+			}
+			rethrow;
+		}
+		return true;
 	}
 	
 	/**
@@ -36,7 +135,7 @@ component accessors="true"  {
 	* @autoDelete true if we are declaring an autodelete queue (server will delete it when no longer in use)
 	* @queueArguments  Struct of other properties (construction arguments) for the queue
 	* 
-	* Declare a new quueue.  Nothing happens if this queue already exists.
+	* Declare a new queue.  Nothing happens if this queue already exists.
 	*/
 	function queueDeclare(
 		required string name,
@@ -64,7 +163,6 @@ component accessors="true"  {
 		return this;
 	}
 	
-	
 	/**
 	* @queue the name of the queue
 	* @exchange the name of the exchange
@@ -80,6 +178,24 @@ component accessors="true"  {
 		struct bindArguments={}
 	) {
 		getChannel().queueBind( queue, exchange, routingKey, bindArguments );
+		return this;
+	}
+	
+	/**
+	* @queue the name of the queue
+	* @exchange the name of the exchange
+	* @routingKey the routing key to use for the binding
+	* @bindArguments Struct of other properties (binding parameters)
+	* 
+	* Unbind a queue from an exchange.
+	*/
+	function queueUnbind(
+		required string queue,
+		required string exchange,
+		required string routingKey,
+		struct bindArguments={}
+	) {
+		getChannel().queueUnbind( queue, exchange, routingKey, bindArguments );
 		return this;
 	}
 	
