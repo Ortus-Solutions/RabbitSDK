@@ -424,7 +424,11 @@ component accessors="true"  {
 	* Call this method for every channel when you are finished using it to free resources
 	*/
 	function close() {
-		getChannel().close();
+		try {
+			getChannel().close();
+		} catch( any e ) {
+			// Ignore errors if channel is already closed
+		}
 		return this;
 	}
 

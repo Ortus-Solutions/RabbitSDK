@@ -638,11 +638,112 @@
 				
 			});
 			
+			describe( 'RPC flow', function(){
+
+				it( 'Can create default RPC Client', function(){
+					getRabbitClient()
+						.RPCClient();
+				});
+
+				it( 'Can create speficic RPC Client', function(){
+					getRabbitClient()
+						.RPCClient( 'my_RPC_queue', 5 );
+				});
+
+				it( 'Can close RPC Client', function(){
+					getRabbitClient()
+						.RPCClient()
+						.$close();
+				});
+
+				it( 'Can timeout RPC call', function(){
+					var start = getTickCount();
+					
+					expect( ()=>getRabbitClient()
+							.RPCClient( createUUID() )
+							.$call( 'myMethod', {}, 1 ) )
+						.toThrow( 'java.util.concurrent.TimeoutException' );
+						
+					expect( getTickCount()-start ).toBeCloseTo( expected=1000, delta=200, message='RPC call should have timed out in around 1 second.' );
+					
+				});
+
+				it( 'Can send an RPC call with UDF server', function(){
+					var queueName = 'RPC_queue';
+					try {
+						var channel = getRabbitClient()
+							.startRPCServer( 
+								queue=queueName,
+								consumer=(method,args)=>{
+									if( method == 'echo' ) {
+										return args;
+									} else if( method == 'null' ) {
+										return;
+									} else if( method == 'error' ) {
+										throw( message="error message", detail="error detail", type="RPC_BLEW_CHUNKS" );
+									} else {
+										return 'You called [#method#]';
+									}
+								}
+							);
+							
+						RPCClientTests( queueName );
+
+					} finally{
+						if( !isNull( channel ) ) channel.close();
+					}
+					
+				});
+
+				it( 'Can send an RPC call with CFC server', function(){
+					var queueName = 'another_RPC_queue';
+					try {
+						var channel = getRabbitClient()
+							.startRPCServer( 
+								queue=queueName,
+								consumer=new tests.resources.RPCServer()
+							);
+							
+						RPCClientTests( queueName );
+						
+					} finally{
+						if( !isNull( channel ) ) channel.close();
+					}
+					
+				});
+				
+			});
+			
 		});
+				
 	}
 
 	private function getRabbitClient( name='RabbitClient@rabbitsdk' ){
 		return getWireBox().getInstance( name );
+	}
+
+	private function RPCClientTests( queueName ){
+		var RPCClient = getRabbitClient().RPCClient( queueName, 1 );
+		
+		// Get back simple value
+		expect( RPCClient.$call( 'myMethod' ) ).toBe( 'You called [myMethod]' );
+		expect( RPCClient.myMethod() ).toBe( 'You called [myMethod]' );
+		
+		// Send/receive struct of args 
+		expect( RPCClient.$call( 'echo', { 'foo' : 'bar' } ) ).toBeStruct();
+		expect( RPCClient.echo( 'foo' : 'bar' ) ).toBeStruct();
+		
+		// Send/receive array of args
+		expect( RPCClient.$call( 'echo', [ 'foo', 'bar' ] )[1] ).toBe( 'foo' );
+		expect( RPCClient.echo( 'foo', 'bar' )[1] ).toBe( 'foo' );
+		
+		// Receive null back
+		expect( RPCClient.$call( 'null' ) ).toBeNull();
+		expect( RPCClient.null() ).toBeNull();
+		
+		// Receive error back
+		expect( ()=>RPCClient.$call( 'error' ) ).toThrow( 'RPC_BLEW_CHUNKS' );
+		expect( ()=>RPCClient.error() ).toThrow( 'RPC_BLEW_CHUNKS' );						
 	}
 
 }

@@ -465,7 +465,83 @@ try {
 The way AMQP works is that if any communication error happens, the channel will be automatically closed which means no more actions can be take with it.  Please account for this in your code and 
 ask the client for a fresh channel if the previous one encounters an error.  
 
+## RPC Pattern (Remote Procedure Call)
 
+RabbitMQ can be used for synchronous calls where the client blocks until a reply is received via the RPC Client.  There are two pieces that must be in place, an RPC Server listening for calls, and an 
+RPC client making them.  The RPC Client "sends" requests by placing them into a queue which is being listened to by the RPC Server.  The server will send the reply back using a direct-reply feature of Rabbit 
+which behaves as a pseudo-queue to re-deliver the reply over the same channel as the original message.  
+
+### RPC Server
+  
+You can start up as many RPC servers you like anywhere.  Just specify the name of the queue they'll be listening to.  An RPC Server is just a customized version of a consumer thread, but with special 
+assumptions about the message semantics and auto-replying.  One RPC Server can only process a single message at a time, so start more than one if you need high throughput.  
+
+An RPC server can use a UDF or a CFC instance to process the incoming calls.  When using a UDF, the function will receive the name of the RPC method and
+args which may be an array or a struct.  Just like starting a consumer, a channel reference will be passed back, which will stop the server when closed.  
+
+```js
+channel = rabbitClient
+	.startRPCServer( 
+		queue='RPC_requests',
+		consumer=(method,args)=>{
+			// Whatever code you want here:
+			if( method == 'processA' ) {
+				return myService.processA( argumentCollection=args );
+			} else if( method == 'processB' ) {
+				return myService.processB( argumentCollection=args );
+			} else {
+				throw( "RPC method [#method#] not found." );
+			}
+		}
+	);
+```
+
+When passing a CFC instance, the RPC server will automatically call the method whose name matches the incoming `method` parameter, passing all of the args as the argument collection for you.
+
+```js
+channel = getRabbitClient()
+	.startRPCServer( 
+		queue=queueName,
+		consumer=new models.myService()
+	);
+```
+
+### RPC Client
+
+Once the RPC server is running somewhere, you are ready to create and use an RPC Client which is pointing to the same queue.  A different RPC Client will be created and persisted inside the
+rabbitClient for each unique exchange/routingKey/timeout combination.  You can re-use the client object across threads, and each call will block until the server has sent back the response from your remote procedure call.
+
+```js
+RPCClient = rabbitClient.RPCClient( 'RPC_requests' );
+result RPCClient.processA( 'foo' );
+```
+The above code will create an RPC call with the method name `processA` and a positional parameter of `foo`.  The RPCClient uses `onMissingMethod()` to allow any method call to be proxied to the server cleanly.
+
+If you are not going to use an RPC Client again during the life of your application, you can close it like so.  
+```js
+RPCClient.$close();
+``` 
+
+The close method is prefixed with a dollar sign on this class so it doesn't interfere with the `onMissingMethod()` operation.
+
+
+### Timeouts
+
+It is important that your blocking RPC calls time out if the server is not running or not responding in a timely fashion.  The default timeout of the client is 15 seconds.  You can override the default timeout for all RPC calls when creating the client lie so:
+```js
+RPCClient = rabbitClient.RPCClient( 'RPC_requests', 30 );
+```
+And you can override the timeout on a per-call basis by using the `$call()` method like so:
+```js
+resullt = RPCClient.$call( 'processA', { my : 'args' }, 30 )
+```
+Both of those examples override the timeout to 30 seconds.  If no reply has been received, an exception will be thrown.  It is not possible to pass a call-specific timeout override when using the `onMissingMethod()` proxy. 
+
+### RPC Exceptions
+
+If an exception is thrown from the RPC Server's UDF or component method during invocation, an exception with the same message, detail, and type will be thrown from the client.  
+Due to limitations of both Lucee and Adobe in regards to how they rethrow serialized exception objects, the original stack trace will be in the `detail` and the tag context will not be the 
+original one from the server-side exception.     
 
 ## Sponsorship
 
