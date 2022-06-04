@@ -16,6 +16,7 @@ component accessors=true singleton ThreadSafe {
 	property name="interceptorService" inject="box:InterceptorService";
 //	property name="javaloader" inject="loader@cbjavaloader";
 	property name="log" inject="logbox:logger:{this}";
+	property name="RPCClients" type="struct";
 	
 
 	/** The RabbitMQ Connection */
@@ -27,6 +28,7 @@ component accessors=true singleton ThreadSafe {
 	 */
 	function init(){
 		setClientID( createUUID() );
+		setRPCClients( {} );
 		return this;
 	}
 	
@@ -122,7 +124,7 @@ component accessors=true singleton ThreadSafe {
 	}
 
 	/**
-	 * Creates an auto-closing channel for multuple operations.  Do not store the channel refernce passed to the callback
+	 * Creates an auto-closing channel for multiple operations.  Do not store the channel reference passed to the callback
 	 * as it will be closed as soon as the UDF is finished.  Any value returned from the UDF will be returned from the
 	 * batch method.  
 	 * This allows you to not need to worry about closing the channel.  Also, if you have a large number of operations to 
@@ -162,7 +164,12 @@ component accessors=true singleton ThreadSafe {
 	function shutdown() {
 		lock timeout="20" type="exclusive" name="RabbitMQShutdown" {
 			log.debug( 'Shutting down RabbitMQ client' );
+			
 			if( hasConnection() ) {
+				
+				// Shut down any RPCCLients.
+				getRPCCLients().each( ( k, v )=>v.$close() );
+				
 				getConnection().close();
 				structDelete( variables, 'connection' );
 			}
@@ -175,6 +182,118 @@ component accessors=true singleton ThreadSafe {
 	 */
 	boolean function hasConnection() {
 		return !isNull( variables.connection );
+	}
+
+	/**
+	 * Return an RPC Client for a given exchange/routing key/timeout, creating it if neccessary
+	 *
+	 * @exchange Name of exchange to send RPC messages to
+	 * @routingKey Name of routing key to send RPC messages to
+	 * @timeout Timeout in seconds to wait for reply.  0 to wait forever (not recomended)
+	 */
+	function RPCClient(
+		string routingKey='RPC_Queue',
+		numeric timeout=15,
+		string exchange=''
+	) {
+		var RPCClientHash = hash( 'exchange:#exchange#:routingKey:#routingKey#:timeout:#timeout#' );
+		var lockName = 'rabbitMQ-#getClientID()#-RPCCLient';
+		var clients = getRPCClients();
+		lock name="#lockName#" type="readonly" timeout="30" {
+			if( clients.keyExists( RPCClientHash ) ) {
+				return clients[ RPCClientHash ];
+			}
+		}
+		lock name="#lockName#" type="exclusive" timeout="30" {
+			if( clients.keyExists( RPCClientHash ) ) {
+				return clients[ RPCClientHash ];
+			}
+			var newClient = wirebox.getInstance( 'RPCClient@rabbitsdk' )
+				.$configure(
+					RPCClientHash,
+					this,
+					arguments.exchange,
+					arguments.routingKey,
+					arguments.timeout
+				);
+			clients[ RPCClientHash ] = newClient;
+			return newClient;
+		}
+		
+	}
+	
+	/**
+	* Start consumer thread which will listen for messages and reply back.  
+	* If you pass a UDF to the "consumer" argument, it will be invoked for every message and will receive 
+	* a "message" and "arg" paramter.  The return value of the UDF will be sent back to the RPC client.
+	* If you pass a CFC instance to the "consumer" argument, a public method whose name matches the incoming
+	* RPC "method" will be called and the "args" will be passed via argumentCollection. The return value of the CFC's 
+	* method will be sent back to the RPC client.
+	* 
+	* @queue Name of the queue to watch for incoming RPC message
+	* @consumer A UDF or CFC instance to be called for each message.
+	*/
+	function startRPCServer(
+		required string queue,
+		any consumer
+	) {
+		queueDeclare( queue );
+		var nullMe=()=>{}
+		return startConsumer( 
+			queue=queue,
+			consumer=(message,channel,log)=>{
+				var rpc = message.getBody();
+				var results = '';
+				var isError = false;
+				try {
+					if( isObject( consumer ) ) {
+						results = invoke( consumer, rpc.method, rpc.args );
+					} else {
+						results = consumer( rpc.method, rpc.args );	
+					}
+				} catch( any e ) {
+					isError = true;
+					results = e;
+				} finally {
+					channel.publish(
+						{
+							'result' : ( isNull( results ) ? nullMe() : results),
+							'isError' : isError
+							
+						},
+						message.getReplyTo(),
+						'',
+						{
+							'correlationId' : message.getCorrelationId() 
+						}
+					)	
+				}
+			}
+		);
+	}
+
+	/**
+	 * Remove an RPC Client
+	 *
+	 * @RPCCLientHash Hash of the RPC client to remove
+	 */
+	function removeRPCClient(
+		required string RPCClientHash
+	) {
+		var lockName = 'rabbitMQ-#getClientID()#-RPCCLient';
+		var clients = getRPCClients();
+		
+		if( !clients.keyExists( RPCClientHash ) ) {
+			return;
+		}
+		
+		lock name="#lockName#" type="exclusive" timeout="30" {
+			if( !clients.keyExists( RPCClientHash ) ) {
+				return;
+			}
+			
+			clients.delete( RPCClientHash );
+		}
 	}
 	
 	
