@@ -122,13 +122,10 @@ component accessors="false"  {
 			}
 			
 			if( body.isError ) {
-				// Lucee and ACF will lose the stack trace when we rethrow the struct, so cram
-				// the detail in with the message, and the stacktrace in the detail. Ugly, but it preserves our data.
-				// https://luceeserver.atlassian.net/browse/LDEV-4021
-				// https://tracker.adobe.com/#/view/CF-4213777
-				body.result.message &= ' ' & body.result.detail;
-				body.result.detail = body.result.stackTrace;
-				throw( object=body.result );
+				var ex = body.result;
+				ex.message &= ' ' & ex.detail;
+				ex.detail = ex.stackTrace;
+				throw( message=ex.message, detail=ex.detail, type=ex.type, extendedInfo=ex.extendedInfo, errorCode=ex.errorCode );
 			}
 			
 			// Allow null to be returned from RPC call
@@ -152,8 +149,8 @@ component accessors="false"  {
 	/**
 	* A proxy for directly invoking remote methods
 	*/
-	function onMissingMethod( methodName, args ) {
-		return $call( methodName, args );
+	function onMissingMethod( missingMethodName, missingMethodArguments ) {
+		return $call( missingMethodName, missingMethodArguments );
 	}
 		
 	/**

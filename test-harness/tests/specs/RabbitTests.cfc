@@ -51,11 +51,6 @@
 					var rabbitClient = getRabbitClient();
 					expect(	rabbitClient ).toBeComponent();
 				});
-					
-				it( 'should register library', function(){
-					var rabbitClient = getRabbitClient();
-					expect(	rabbitClient ).toBeComponent();
-				});
 	
 				it( 'should connect to server', function(){
 					getRabbitClient().connect( quiet=true );
@@ -731,7 +726,7 @@
 		
 		// Send/receive struct of args 
 		expect( RPCClient.$call( 'echo', { 'foo' : 'bar' } ) ).toBeStruct();
-		expect( RPCClient.echo( 'foo' : 'bar' ) ).toBeStruct();
+		expect( RPCClient.echo( foo : 'bar' ) ).toBeStruct();
 		
 		// Send/receive array of args
 		expect( RPCClient.$call( 'echo', [ 'foo', 'bar' ] )[1] ).toBe( 'foo' );

@@ -243,12 +243,11 @@ component accessors=true singleton ThreadSafe {
 			queue=queue,
 			consumer=(message,channel,log)=>{
 				var rpc = message.getBody();
-				systemOutput( 'RPC message to [#rpc.method#] received.', 1 );
 				var results = '';
 				var isError = false;
 				try {
 					if( isObject( consumer ) ) {
-						results = consumer[ rpc.method ]( argumentCollection=rpc.args );
+						results = invoke( consumer, rpc.method, rpc.args );
 					} else {
 						results = consumer( rpc.method, rpc.args );	
 					}
