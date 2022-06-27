@@ -89,7 +89,7 @@ component accessors=true singleton ThreadSafe {
 			factory.setUsername( thisUsername );
 			factory.setPassword( thisPassword );
 			
-			if( isBoolean( thisUseSSL ) ) {
+			if( isBoolean( thisUseSSL ) && thisUseSSL ) {
 				factory.useSslProtocol( arguments.sslProtocol );	
 			}
 			
