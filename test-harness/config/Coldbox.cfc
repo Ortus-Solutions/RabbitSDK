@@ -67,11 +67,11 @@
 
 		moduleSettings = {
 			rabbitsdk = {
-				host : getSystemSetting( 'rabbit_host' ),
-				username : getSystemSetting( 'rabbit_username' ),
-				password : getSystemSetting( 'rabbit_password' ),
-				virtualHost : getSystemSetting( 'rabbit_virtualHost' ),
-				useSSL : getSystemSetting( 'rabbit_useSSL' )
+				host : getSystemSetting( 'rabbit_host', 'localhost' ),
+				username : getSystemSetting( 'rabbit_username', 'guest' ),
+				password : getSystemSetting( 'rabbit_password', 'guest' ),
+				virtualHost : getSystemSetting( 'rabbit_virtualHost', '/' ),
+				useSSL : getSystemSetting( 'rabbit_useSSL', '' )
 			}
 		};
 
