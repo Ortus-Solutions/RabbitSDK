@@ -8,7 +8,7 @@
 * ALWAYS make sure you call the shutdown() method when you're done using or you'll leave orphaned connections open.
 */
 component accessors=true singleton ThreadSafe {
-	
+
 	// DI
 	property name="settings" inject="box:moduleSettings:rabbitsdk";
 	property name="wirebox" inject="wirebox";
@@ -17,12 +17,12 @@ component accessors=true singleton ThreadSafe {
 //	property name="javaloader" inject="loader@cbjavaloader";
 	property name="log" inject="logbox:logger:{this}";
 	property name="RPCClients" type="struct";
-	
+
 
 	/** The RabbitMQ Connection */
 	property name="connection" type="any";
 	property name="clientID" type="string";
-	
+
 	/**
 	 * Constructor
 	 */
@@ -31,11 +31,11 @@ component accessors=true singleton ThreadSafe {
 		setRPCClients( {} );
 		return this;
 	}
-	
+
 	function onDIComplete(){
 		log.debug( 'Rabbit client intialized. ClientID: #getClientID()#' );
-		interceptorService.registerInterceptor( 
-			interceptor 	= this, 
+		interceptorService.registerInterceptor(
+			interceptor 	= this,
 			interceptorObject 	= this,
 			interceptorName 	= "rabbitsdk-client-#getClientID()#"
 		);
@@ -43,26 +43,26 @@ component accessors=true singleton ThreadSafe {
 
 	/**
 	 * @host The host such as "localhost"
-	 * @port The port to connect on 
+	 * @port The port to connect on
 	 * @username The username to connect with
 	 * @password The password to connect with
 	 * @quiet True to ignore existing connections, false will throw an exception if there is already a connection
-	 * 
+	 *
 	 * Create connection to RabbitMQ.  This will be called implicitly if the
 	 * connection details have been provided in the module settings.
 	 * This RabbitClient wraps a single, persisted conenction to RabbitMQ.
 	 */
 	function connect( string host, string port, string username, string password, string virtualHost, boolean useSSL, boolean quiet=false, string sslProtocol = 'TLSV1.2' ){
-		
+
 		if( hasConnection() ) {
 			if( quiet ) {
 				return this;
 			}
 			throw( 'Client is already connected.' );
 		}
-		
+
 		lock timeout="20" type="exclusive" name="RabbitMQConnect" {
-			    
+
 			if( hasConnection() ) {
 				if( quiet ) {
 					return this;
@@ -75,37 +75,37 @@ component accessors=true singleton ThreadSafe {
 			var thisPort = arguments.port ?: settings.port ?: '';
 			var thisVirtualHost = arguments.virtualHost ?: settings.virtualHost ?: '';
 			var thisUseSSL= arguments.useSSL ?: settings.useSSL ?: '';
-			
-			
+
+
 			if( !thisHost.len() && !thisUsername.len() ) {
 				throw( 'No Rabbit Host and username configured.  Cannot connect.' );
 			}
-			
+
 			log.debug( 'Creating connection to [#thisHost#]' );
-			
+
 			//var factory = javaloader.create( "com.rabbitmq.client.ConnectionFactory" ).init();
 			var factory = createObject( "java", "com.rabbitmq.client.ConnectionFactory" ).init();
 			factory.setHost( thisHost );
 			factory.setUsername( thisUsername );
 			factory.setPassword( thisPassword );
-			
+
 			if( isBoolean( thisUseSSL ) && thisUseSSL ) {
-				factory.useSslProtocol( arguments.sslProtocol );	
+				factory.useSslProtocol( arguments.sslProtocol );
 			}
-			
+
 			if( len( thisVirtualHost ) ) {
-				factory.setVirtualHost( thisVirtualHost );	
+				factory.setVirtualHost( thisVirtualHost );
 			}
-			
+
 			factory.setRequestedHeartbeat( 20 );
 			if( val( thisPort ) != 0 ) {
-				factory.setPort( thisPort );	
-			}			
-			
+				factory.setPort( thisPort );
+			}
+
 			factory.setConnectionTimeout( 5000 );
-			
+
 			setConnection( factory.newConnection() );
-			
+
 		}
 		return this;
 	}
@@ -126,14 +126,14 @@ component accessors=true singleton ThreadSafe {
 	/**
 	 * Creates an auto-closing channel for multiple operations.  Do not store the channel reference passed to the callback
 	 * as it will be closed as soon as the UDF is finished.  Any value returned from the UDF will be returned from the
-	 * batch method.  
-	 * This allows you to not need to worry about closing the channel.  Also, if you have a large number of operations to 
+	 * batch method.
+	 * This allows you to not need to worry about closing the channel.  Also, if you have a large number of operations to
 	 * perform on the channel, you can perform them all inside your UDF.
 	 */
 	function batch( required any udf ) {
 		try {
 			var channel = createChannel();
-			return udf( channel ); 
+			return udf( channel );
 		} finally {
 			if( !isNull( channel ) ) {
 				channel.close();
@@ -164,13 +164,23 @@ component accessors=true singleton ThreadSafe {
 	function shutdown() {
 		lock timeout="20" type="exclusive" name="RabbitMQShutdown" {
 			log.debug( 'Shutting down RabbitMQ client' );
-			
+
 			if( hasConnection() ) {
-				
+
 				// Shut down any RPCCLients.
-				getRPCCLients().each( ( k, v )=>v.$close() );
-				
-				getConnection().close();
+				getRPCCLients().each( ( k, v )=>{
+					try {
+						v.$close()
+					} catch( any e ) {
+						log.warn( 'Shutdown exception closing RPC Client: ' & e.message );
+					}
+				} );
+
+				try {
+					getConnection().close();
+				} catch( any e ) {
+					log.warn( 'Shutdown exception closing connection: ' & e.message );
+				}
 				structDelete( variables, 'connection' );
 			}
 			interceptorService.unregister( "rabbitsdk-client-#getClientID()#" );
@@ -219,17 +229,17 @@ component accessors=true singleton ThreadSafe {
 			clients[ RPCClientHash ] = newClient;
 			return newClient;
 		}
-		
+
 	}
-	
+
 	/**
-	* Start consumer thread which will listen for messages and reply back.  
-	* If you pass a UDF to the "consumer" argument, it will be invoked for every message and will receive 
+	* Start consumer thread which will listen for messages and reply back.
+	* If you pass a UDF to the "consumer" argument, it will be invoked for every message and will receive
 	* a "message" and "arg" paramter.  The return value of the UDF will be sent back to the RPC client.
 	* If you pass a CFC instance to the "consumer" argument, a public method whose name matches the incoming
-	* RPC "method" will be called and the "args" will be passed via argumentCollection. The return value of the CFC's 
+	* RPC "method" will be called and the "args" will be passed via argumentCollection. The return value of the CFC's
 	* method will be sent back to the RPC client.
-	* 
+	*
 	* @queue Name of the queue to watch for incoming RPC message
 	* @consumer A UDF or CFC instance to be called for each message.
 	*/
@@ -239,7 +249,7 @@ component accessors=true singleton ThreadSafe {
 	) {
 		queueDeclare( queue );
 		var nullMe=()=>{}
-		return startConsumer( 
+		return startConsumer(
 			queue=queue,
 			consumer=(message,channel,log)=>{
 				var rpc = message.getBody();
@@ -249,7 +259,7 @@ component accessors=true singleton ThreadSafe {
 					if( isObject( consumer ) ) {
 						results = invoke( consumer, rpc.method, rpc.args );
 					} else {
-						results = consumer( rpc.method, rpc.args );	
+						results = consumer( rpc.method, rpc.args );
 					}
 				} catch( any e ) {
 					isError = true;
@@ -259,14 +269,14 @@ component accessors=true singleton ThreadSafe {
 						{
 							'result' : ( isNull( results ) ? nullMe() : results),
 							'isError' : isError
-							
+
 						},
 						message.getReplyTo(),
 						'',
 						{
-							'correlationId' : message.getCorrelationId() 
+							'correlationId' : message.getCorrelationId()
 						}
-					)	
+					)
 				}
 			}
 		);
@@ -282,25 +292,25 @@ component accessors=true singleton ThreadSafe {
 	) {
 		var lockName = 'rabbitMQ-#getClientID()#-RPCCLient';
 		var clients = getRPCClients();
-		
+
 		if( !clients.keyExists( RPCClientHash ) ) {
 			return;
 		}
-		
+
 		lock name="#lockName#" type="exclusive" timeout="30" {
 			if( !clients.keyExists( RPCClientHash ) ) {
 				return;
 			}
-			
+
 			clients.delete( RPCClientHash );
 		}
 	}
-	
-	
+
+
 	// CONVEIENCE METHODS THAT AUTOMATICALLY HANDLE YOUR CHANNEL FOR YOU
-	
-	
-	
+
+
+
 	/**
 	* @name the name of the exchange
 	* @type Type of exchange.  Valid values are direct, fanout, headers, and topic
@@ -308,7 +318,7 @@ component accessors=true singleton ThreadSafe {
 	* @autoDelete true if the server should delete the exchange when it is no longer in use
 	* @internal true if the exchange is internal, i.e. can't be directly published to by a client.
 	* @queueArguments  Struct of other properties (construction arguments) for the exchange
-	* 
+	*
 	* Declare a new exchange.
 	*/
 	function exchangeDeclare(
@@ -327,13 +337,13 @@ component accessors=true singleton ThreadSafe {
 	/**
 	* @name the name of the exchange
 	* @ifUnused true to indicate that the exchange is only to be deleted if it is unused
-	* 
+	*
 	* delete an exchange.
 	*/
 	function exchangeDelete(
 		required string name,
 		boolean ifUnused=false
-	) {	
+	) {
 		var args = arguments;
 		batch( (channel)=>channel.exchangeDelete( argumentCollection=args ) );
 		return this;
@@ -344,7 +354,7 @@ component accessors=true singleton ThreadSafe {
 	* @source The name of the exchange from which messages flow across the binding
 	* @routingKey The routing key to use for the binding
 	* @bindArguments A struct of other properties (binding parameters)
-	* 
+	*
 	* Bind an exchange to an exchange.
 	*/
 	function exchangeBind(
@@ -352,7 +362,7 @@ component accessors=true singleton ThreadSafe {
 		required string source,
 		required string routingKey,
 		struct bindArguments={}
-	) {	
+	) {
 		var args = arguments;
 		batch( (channel)=>channel.exchangeBind( argumentCollection=args ) );
 		return this;
@@ -363,7 +373,7 @@ component accessors=true singleton ThreadSafe {
 	* @source The name of the exchange from which messages flow across the binding
 	* @routingKey The routing key to use for the binding
 	* @bindArguments A struct of other properties (binding parameters)
-	* 
+	*
 	* Unbind an exchange from an exchange.
 	*/
 	function exchangeUnbind(
@@ -371,16 +381,16 @@ component accessors=true singleton ThreadSafe {
 		required string source,
 		required string routingKey,
 		struct bindArguments={}
-	) {	
+	) {
 		var args = arguments;
 		batch( (channel)=>channel.exchangeUnbind( argumentCollection=args ) );
 		return this;
 	}
-	
+
 	/**
 	* @name the name of the exchange
-	* 
-	* Returns true if exchange exists, false if it doesn't.  Be careful calling this method under load as it 
+	*
+	* Returns true if exchange exists, false if it doesn't.  Be careful calling this method under load as it
 	* catches a thrown exception if the exchange doesn't exist so it probably doesn't perform great if the exchange you
 	* are checking doesn't exist most of the time.
 	*/
@@ -388,14 +398,14 @@ component accessors=true singleton ThreadSafe {
 		var args = arguments;
 		return batch( (channel)=>channel.exchangeExists( argumentCollection=args ) );
 	}
-	
+
 	/**
 	* @name the name of the queue
 	* @durable true if we are declaring a durable queue (the queue will survive a server restart)
 	* @exclusive true if we are declaring an exclusive queue (restricted to this connection)
 	* @autoDelete true if we are declaring an autodelete queue (server will delete it when no longer in use)
 	* @queueArguments  Struct of other properties (construction arguments) for the queue
-	* 
+	*
 	* Declare a new quueue.  Nothing happens if this queue already exists.
 	*/
 	function queueDeclare(
@@ -409,7 +419,7 @@ component accessors=true singleton ThreadSafe {
 		batch( (channel)=>channel.queueDeclare( argumentCollection=args ) );
 		return this;
 	}
-	
+
 	/**
 	* @name the name of the queue
 	* @ifUnused true if the queue should be deleted only if not in use
@@ -425,14 +435,14 @@ component accessors=true singleton ThreadSafe {
 		batch( (channel)=>channel.queueDelete( argumentCollection=args ) );
 		return this;
 	}
-	
-	
+
+
 	/**
 	* @queue the name of the queue
 	* @exchange the name of the exchange
 	* @routingKey the routing key to use for the binding
 	* @bindArguments Struct of other properties (binding parameters)
-	* 
+	*
 	* Bind a queue to an exchange.
 	*/
 	function queueBind(
@@ -445,13 +455,13 @@ component accessors=true singleton ThreadSafe {
 		batch( (channel)=>channel.queueBind( argumentCollection=args ) );
 		return this;
 	}
-	
+
 	/**
 	* @queue the name of the queue
 	* @exchange the name of the exchange
 	* @routingKey the routing key to use for the binding
 	* @bindArguments Struct of other properties (binding parameters)
-	* 
+	*
 	* Unbind a queue from an exchange.
 	*/
 	function queueUnbind(
@@ -464,10 +474,10 @@ component accessors=true singleton ThreadSafe {
 		batch( (channel)=>channel.queueUnbind( argumentCollection=args ) );
 		return this;
 	}
-	
+
 	/**
 	* @queue the name of the queue
-	* 
+	*
 	* Purges the contents of the given queue.
 	*/
 	function queuePurge( required string queue ) {
@@ -475,10 +485,10 @@ component accessors=true singleton ThreadSafe {
 		batch( (channel)=>channel.queuePurge( argumentCollection=args ) );
 		return this;
 	}
-	
+
 	/**
 	* @queue the name of the queue
-	* 
+	*
 	* Returns count of the messages of the given queue.
 	* Doesn't count messages which waiting acknowledges or published to queue during transaction but not committed yet.
 	*/
@@ -486,11 +496,11 @@ component accessors=true singleton ThreadSafe {
 		var args = arguments;
 		return batch( (channel)=>channel.getQueueMessageCount( argumentCollection=args ) );
 	}
-	
+
 	/**
 	* @queue the name of the queue
-	* 
-	* Returns true if queue exists, false if it doesn't.  Be careful calling this method under load as it 
+	*
+	* Returns true if queue exists, false if it doesn't.  Be careful calling this method under load as it
 	* catches a thrown exception if the queue doesn't exist so it probably doesn't perform great if the queue you
 	* are checking doesn't exist most of the time.
 	*/
@@ -498,13 +508,13 @@ component accessors=true singleton ThreadSafe {
 		var args = arguments;
 		return batch( (channel)=>channel.queueExists( argumentCollection=args ) );
 	}
-	
+
 	/**
 	* @body The body of the message. Either a string or a complex object which will be JSON serialized.
 	* @exchange the name of the exchange
 	* @routingKey case sensitive routing key to use for the binding
 	* @props Struct of other properties for the message - routing headers etc
-	* 
+	*
 	* Publish a message
 	*/
 	function publish(
@@ -517,7 +527,7 @@ component accessors=true singleton ThreadSafe {
 		batch( (channel)=>channel.publish( argumentCollection=args ) );
 		return this;
 	}
-	
+
 	/**
 	* @queue the name of the queue
 	*
@@ -529,14 +539,14 @@ component accessors=true singleton ThreadSafe {
 		if( !isNull( arguments.autoAcknowledge ) && !arguments.autoAcknowledge ) {
 			throw( 'autoAcknowledge cannot be set to false in this method.  Messages must be acknowledged on the same channel they were received.  Please create a channel and use its getMessage() method or use the rabbitClient.batch() method.' );
 		}
-		
+
 		var args = arguments;
 		return batch( (channel)=> channel.getMessage( argumentCollection=args ) );
 	}
-	
+
 	/**
 	* @queue Name of the queue to consume
-	* @consumer A UDF or CFC method name (when component is specified) to be called for each message. 
+	* @consumer A UDF or CFC method name (when component is specified) to be called for each message.
 	* @error A UDF or CFC method name (when component is specified) to be called in case of an error in the consumer
 	* @component Name or instance of component containing "onMessage" and/or "onError" methods.  Don't use if passing closures for "consumer" and "error"
 	* @autoAcknowledge Automatically ackowledge each message as processed
@@ -553,5 +563,5 @@ component accessors=true singleton ThreadSafe {
 		var args = arguments;
 		return createChannel().startConsumer( argumentCollection=args );
 	}
-	
+
 }
