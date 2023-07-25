@@ -336,6 +336,7 @@ Transient that represents a message received from the server for you to process.
 * **getHeaders()** - Struct containing any custom headers
 * **getMessageId()** - Message ID
 * **getPriority()** - Priority (numeric, 1-10)
+* **getRawBody()** - The raw body of the message.
 * **getReplyTo()** - Reply to
 * **getTimestamp()** - Timestamp (java.util.Date)
 * **getType()** - Type
