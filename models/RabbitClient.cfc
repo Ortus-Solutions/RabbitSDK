@@ -16,6 +16,7 @@ component accessors=true singleton ThreadSafe {
 	property name="interceptorService" inject="box:InterceptorService";
 //	property name="javaloader" inject="loader@cbjavaloader";
 	property name="log" inject="logbox:logger:{this}";
+	property name="rabbitJavaLoader" inject="rabbitJavaLoader@RabbitSDK";
 	property name="RPCClients" type="struct";
 
 
@@ -84,7 +85,7 @@ component accessors=true singleton ThreadSafe {
 			log.debug( 'Creating connection to [#thisHost#]' );
 
 			//var factory = javaloader.create( "com.rabbitmq.client.ConnectionFactory" ).init();
-			var factory = createObject( "java", "com.rabbitmq.client.ConnectionFactory" ).init();
+			var factory = rabbitJavaLoader.create( "com.rabbitmq.client.ConnectionFactory" ).init();
 			factory.setHost( thisHost );
 			factory.setUsername( thisUsername );
 			factory.setPassword( thisPassword );
