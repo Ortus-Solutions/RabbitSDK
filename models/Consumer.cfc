@@ -35,8 +35,12 @@ component accessors="true"{
 		variables.oneHundredYears = ( 60 * 60 * 24 * 365 * 100 );
 		variables.loadAppContext  = arguments.loadAppContext;
 
+		variables.isAdobe   = server.keyExists( "coldfusion" ) && server.coldfusion.productName.findNocase( "ColdFusion" ) > 0;
+		variables.isBoxLang = server.keyExists( "boxlang" );
+		variables.isLucee   = server.keyExists( "lucee" );
+
 		// If loading App context or not
-		if ( arguments.loadAppContext ) {
+		if ( arguments.loadAppContext && !variables.isBoxLang ) {
 			if ( server.keyExists( "lucee" ) ) {
 				variables.cfContext   = getCFMLContext().getApplicationContext();
 				variables.pageContext = getCFMLContext();
@@ -211,9 +215,9 @@ component accessors="true"{
 		// out( "==> Context NOT loaded for thread: #getCurrentThread().toString()# loading it..." );
 
 		// Lucee vs Adobe Implementations
-		if ( server.keyExists( "lucee" ) ) {
+		if ( variables.isLucee ) {
 			getCFMLContext().setApplicationContext( variables.cfContext );
-		} else {
+		} else if( variables.isAdobe ) {
 			var fusionContext = variables.originalFusionContext.clone();
 			var pageContext   = variables.originalPageContext.clone();
 			pageContext.resetLocalScopes();
@@ -244,9 +248,9 @@ component accessors="true"{
 		// out( "==> Removing context for thread: #getCurrentThread().toString()#." );
 
 		// Lucee vs Adobe Implementations
-		if ( server.keyExists( "lucee" ) ) {
+		if ( variables.isLucee ) {
 			// Nothing right now
-		} else {
+		} else if ( variables.isAdobe ) {
 			variables.fusionContextStatic.setCurrent( javacast( "null", "" ) );
 		}
 	}
@@ -276,10 +280,10 @@ component accessors="true"{
 	 * Ammend this check once Adobe fixes this in a later update
 	 */
 	function getConcurrentEngineLockName(){
-		if ( server.keyExists( "lucee" ) ) {
-			return createUUID();
-		} else {
+		if ( variables.isAdobe ) {
 			return variables.UUID;
+		} else {
+			return createUUID();
 		}
 	}
 }
