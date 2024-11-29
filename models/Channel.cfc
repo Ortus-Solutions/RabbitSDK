@@ -8,6 +8,7 @@ component accessors="true"  {
 	// DI
 //	property name="javaloader" inject="loader@cbjavaloader";
 	property name="wirebox" inject="wirebox";
+	property name="rabbitJavaLoader" inject="rabbitJavaLoader@RabbitSDK";
 		
 	/** The RabbitMQ Connection this channel belongs to */
 	property name="connection" type="any";
@@ -25,8 +26,8 @@ component accessors="true"  {
 		setConsumerTag( '' );
 		setChannel( getConnection().createChannel() );
 		//setMessagePropertiesBuilder( javaloader.create( "com.rabbitmq.client.AMQP$BasicProperties$Builder" ) );
-		setMessagePropertiesBuilder( createObject( "java", "com.rabbitmq.client.AMQP$BasicProperties$Builder" ) );
-		setJavaExchangeType( createObject( "java", "com.rabbitmq.client.BuiltinExchangeType" ) );
+		setMessagePropertiesBuilder( rabbitJavaLoader.create( "com.rabbitmq.client.AMQP$BasicProperties$Builder" ) );
+		setJavaExchangeType( rabbitJavaLoader.create( "com.rabbitmq.client.BuiltinExchangeType" ) );
 		setJavaUtilDate( createObject( 'java', 'java.util.Date' ) );
 		return this;
 	}
@@ -386,18 +387,12 @@ component accessors="true"  {
 		}
 		
 		
-		var consumerProxy = createDynamicProxy(
-			wirebox.getInstance( name='consumer@rabbitsdk', initArguments={
-				 	channel : this,
-				 	consumer : consumer,
-				 	error : error,
-				 	component : component,
-				 	autoAcknowledge : autoAcknowledge
-				 } ),
-			//[ javaloader.create( "com.rabbitmq.client.Consumer" ) ]
-			// Adobe doesn't support this
-			//[ createObject( "java", "com.rabbitmq.client.Consumer" ) ]
-			[ "com.rabbitmq.client.Consumer" ]
+		var consumerProxy = rabbitJavaLoader.getConsumerProxy(
+			channel=this,
+			consumer=consumer,
+			error=error,
+			component=component,
+			autoAcknowledge=autoAcknowledge
 		);
 		
 		getChannel().basicQos( prefetch );

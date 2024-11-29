@@ -19,6 +19,7 @@ component accessors="false"  {
 	property name="routingKey" type="string" default="RPC_Queue";
 	property name="timeout" type="numeric" default="15";
 	property name="RPCClientHash" type="string";
+	property name="rabbitJavaLoader" inject="rabbitJavaLoader@RabbitSDK";
 	
 	/**
 	 * configure a new Client
@@ -45,8 +46,8 @@ component accessors="false"  {
 		variables.channel = rabbitClient.createChannel();
 		
 		// Create a new instance of the java RPC Client class using a RPCClientParams instance to configure it.
-		variables.jRPCCLient = createObject( 'java', 'com.rabbitmq.client.RpcClient' ).init(
-			createObject( 'java', 'com.rabbitmq.client.RpcClientParams' )
+		variables.jRPCCLient = rabbitJavaLoader.create( 'com.rabbitmq.client.RpcClient' ).init(
+			rabbitJavaLoader.create( 'com.rabbitmq.client.RpcClientParams' )
 				.channel( channel.getChannel() )
 				.exchange( arguments.exchange )
 				.routingKey( arguments.routingKey )
